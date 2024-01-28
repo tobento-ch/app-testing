@@ -262,6 +262,26 @@ var_dump($response instanceof ResponseInterface::class);
 // bool(true)
 ```
 
+**withoutMiddleware**
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->withoutMiddleware(Middleware::class, AnotherMiddleware::class);
+        $http->request('GET', 'user/1');
+        
+        // assertions:
+        $http->response()->assertStatus(200);
+    }
+}
+```
+
 ### File Uploads
 
 You can use the file factory to generate dummy files or images for testing purposes:
@@ -364,6 +384,8 @@ final class SomeAppTest extends TestCase
         // assertions:
         $http->response()->assertStatus(200);
         $auth->assertAuthenticated();
+        // or:
+        //$auth->assertNotAuthenticated();
     }
 }
 ```
