@@ -183,4 +183,32 @@ class AuthTest extends \Tobento\App\Testing\TestCase
         
         $auth->assertAuthenticated();
     }
+    
+    public function testThrowsExceptionIfUserIsAuthenticated()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The user is authenticated');
+        
+        $http = $this->fakeHttp();
+        $http->request('GET', 'profile');
+        $auth = $this->fakeAuth();
+        $auth->tokenStorage('inmemory');
+        
+        $this->getApp()->boot(\Tobento\App\Seeding\Boot\Seeding::class);
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('profile', function (ServerRequestInterface $request) {
+                $authenticated = $request->getAttribute(AuthInterface::class)->getAuthenticated();
+                return $authenticated?->user()?->username();
+            })->middleware(Authenticated::class);
+        });
+        
+        $app = $this->bootingApp();
+        $user = UserFactory::new()->withUsername('tom')->withPassword('123456')->createOne();
+        $auth->authenticatedAs($user);
+        
+        $this->runApp();
+        
+        $auth->assertNotAuthenticated();
+    }
 }
