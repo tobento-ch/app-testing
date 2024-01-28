@@ -116,6 +116,19 @@ final class FakeHttp
     }
     
     /**
+     * Without middleware.
+     *
+     * @param string ...$middleware
+     * @return static $this
+     */
+    public function withoutMiddleware(string ...$middleware): static
+    {
+        $this->app->on(Middleware::class, fn ($m) => $m->without(...$middleware));
+        
+        return $this;
+    }
+    
+    /**
      * Returns the file factory.
      *
      * @return FileFactory
