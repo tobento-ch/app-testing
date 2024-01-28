@@ -144,6 +144,21 @@ final class FakeAuth
     }
     
     /**
+     * Asserts that a user is not authenticated.
+     *
+     * @return static
+     */
+    public function assertNotAuthenticated(): static
+    {
+        TestCase::assertTrue(
+            is_null($this->getAuthenticated()),
+            'The user is authenticated'
+        );
+        
+        return $this;
+    }
+    
+    /**
      * Returns the created token storage.
      *
      * @param string $name
