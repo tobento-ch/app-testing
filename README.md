@@ -11,6 +11,7 @@ Testing support for the app.
     - [Config Tests](#config-tests)
     - [Http Tests](#http-tests)
         - [Request And Response](#request-and-response)
+        - [Subsequent Requests](#subsequent-requests)
         - [File Uploads](#file-uploads)
     - [Auth Tests](#auth-tests)
     - [File Storage Tests](#file-storage-tests)
@@ -209,6 +210,7 @@ $http->request(
     serverParams: [],
     query: ['sort' => 'desc'],
     headers: ['Content-type' => 'application/json'],
+    cookies: ['token' => 'xxxxxxx'],
     files: ['profile' => ...],
     body: ['foo' => 'bar'],
 );
@@ -254,7 +256,12 @@ $http->response()
     ->assertHeaderMissing(name: 'Content-type')
     ->assertCookieExists(key: 'token')
     ->assertCookieMissed(key: 'token')
-    ->assertCookieSame(key: 'token', value: 'value');
+    ->assertCookieSame(key: 'token', value: 'value')
+    ->assertHasSession(key: 'key')
+    ->assertHasSession(key: 'key', value: 'value') // with value
+    ->assertSessionMissing(key: 'key')
+    ->assertLocation(uri: 'uri')
+    ->assertRedirectToRoute(name: 'route', parameters: []);
 
 // you may get the response:
 $response = $http->response()->response();
@@ -278,6 +285,66 @@ final class SomeAppTest extends TestCase
         
         // assertions:
         $http->response()->assertStatus(200);
+    }
+}
+```
+
+### Subsequent Requests
+
+After making a request, subsequent requests will create a new app. Any fakers from the first request will be rebooted.
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/1');
+        
+        // assertions:
+        $http->response()->assertStatus(200);
+        
+        // subsequent request:
+        $http->request('GET', 'user/2');
+        
+        // assertions:
+        $http->response()->assertStatus(200);
+    }
+}
+```
+
+**Following redirects**
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'login');
+        $auth = $this->fakeAuth()->tokenStorage('storage');
+        
+        // you may interact with the app:
+        $app = $this->bootingApp();
+        $user = $auth->getUserRepository()->create(['username' => 'tom']);
+        $auth->authenticatedAs($user);
+        
+        // assertions:
+        $http->response()->assertStatus(302);
+        $auth->assertAuthenticated();
+        
+        // following redirects:
+        $http->followRedirects()->assertStatus(200);
+        
+        // fakers others than http, must be recalled.
+        $this->fakeAuth()->assertAuthenticated();
+        // $auth->assertAuthenticated(); // would be from previous request
     }
 }
 ```
