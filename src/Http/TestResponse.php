@@ -15,6 +15,8 @@ namespace Tobento\App\Testing\Http;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
+use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Routing\RouterInterface;
 use Stringable;
 
 /**
@@ -33,7 +35,9 @@ class TestResponse implements Stringable
      * @param ResponseInterface $response
      */
     public function __construct(
-        protected ResponseInterface $response
+        protected ResponseInterface $response,
+        protected null|SessionInterface $session = null,
+        protected null|RouterInterface $router = null,
     ) {
         $this->cookies = $this->fetchCookies($response->getHeader('Set-Cookie'));
     }
@@ -241,6 +245,94 @@ class TestResponse implements Stringable
             \sprintf('Response cookie with name [%s] is not equal.', $key)
         );
 
+        return $this;
+    }
+    
+    /**
+     * Asserts if the session has the same specified key (and value).
+     *
+     * @param string $key
+     * @param null|string $value
+     * @return static
+     */
+    public function assertHasSession(string $key, null|string $value = null): static
+    {
+        TestCase::assertTrue(
+            $this->session?->has($key),
+            sprintf('Session is missing expected key [%s].', $key)
+        );
+
+        if ($value) {
+            $sessionValue = $this->session?->get($key);
+            
+            TestCase::assertSame(
+                $value,
+                $sessionValue,
+                sprintf(
+                    'Session key [%s] was found, but value [%s] does not match [%s].',
+                    $key,
+                    $sessionValue,
+                    $value
+                )
+            );
+        }
+
+        return $this;
+    }
+    
+    /**
+     * Asserts if the session has not the specified key.
+     *
+     * @param string $key
+     * @return static
+     */
+    public function assertSessionMissing(string $key): static
+    {
+        if (is_null($this->session)) {
+            return $this;
+        }
+        
+        TestCase::assertFalse(
+            $this->session->has($key),
+            sprintf('Session has unexpected key [%s].', $key)
+        );
+
+        return $this;
+    }
+    
+    /**
+     * Assert whether the response is redirecting to a given route.
+     *
+     * @param string $name
+     * @param array $parameters
+     * @return static
+     */
+    public function assertRedirectToRoute(string $name, array $parameters = []): static
+    {
+        if (is_null($this->router)) {
+            return $this;
+        }
+        
+        TestCase::assertTrue(
+            $this->isRedirect(),
+            'Response is not a redirection.'
+        );
+        
+        $this->assertLocation((string)$this->router->url($name, $parameters));
+
+        return $this;
+    }
+    
+    /**
+     * Assert that the current location header matches the given URI.
+     *
+     * @param string $uri
+     * @return $this
+     */
+    public function assertLocation(string $uri)
+    {
+        $this->assertHasHeader('Location', $uri);
+        
         return $this;
     }
     
