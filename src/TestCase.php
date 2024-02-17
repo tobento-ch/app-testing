@@ -33,6 +33,8 @@ abstract class TestCase extends BaseTestCase
 
     private null|AppInterface $app = null;
     
+    private array $fakers = [];
+    
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,6 +42,8 @@ abstract class TestCase extends BaseTestCase
         if (static::CREATE_APP_ON_SETUP) {
             $this->app = $this->createApp();
         }
+        
+        $this->fakers = [];
     }
 
     /**
@@ -117,6 +121,16 @@ abstract class TestCase extends BaseTestCase
     }
     
     /**
+     * Returns a new created app.
+     *
+     * @return AppInterface
+     */
+    public function newApp(): AppInterface
+    {
+        return $this->app = $this->createApp();
+    }
+    
+    /**
      * Deletes the app directory.
      *
      * @return void
@@ -128,5 +142,49 @@ abstract class TestCase extends BaseTestCase
         if (!is_null($this->app)) {
             (new Dir())->delete($this->app->dir('app'));
         }
+    }
+    
+    /**
+     * Returns true if faker exists, otherwise false.
+     *
+     * @param string $faker
+     * @return bool
+     */
+    public function hasFaker(string $faker): bool
+    {
+        return isset($this->fakers[$faker]);
+    }
+    
+    /**
+     * Returns the faker.
+     *
+     * @param string $faker
+     * @return object
+     */
+    public function getFaker(string $faker): object
+    {
+        return $this->fakers[$faker];
+    }
+    
+    /**
+     * Adds an faker
+     *
+     * @param FakerInterface $faker
+     * @return object
+     */
+    public function addFaker(FakerInterface $faker): object
+    {
+        $this->fakers[$faker::class] = $faker;
+        return $faker;
+    }
+    
+    /**
+     * Returns the fakers.
+     *
+     * @return array
+     */
+    public function getFakers(): array
+    {
+        return $this->fakers;
     }
 }
