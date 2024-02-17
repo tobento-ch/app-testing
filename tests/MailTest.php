@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\Test;
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Mail\MailerInterface;
 use Tobento\Service\Mail\MessageInterface;
@@ -29,8 +30,32 @@ class MailTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\View\Boot\View::class);
         $app->boot(\Tobento\App\Mail\Boot\Mail::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser, MailerInterface $mailer) {
+                $message = (new Message())
+                    ->from('from@example.com')
+                    ->to('foo@example.com')
+                    ->subject('Subject')
+                    ->html('<p>Lorem Ipsum</p>');
+                $mailer->send($message);
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function (MailerInterface $mailer) {
+                $message = (new Message())
+                    ->from('from@example.com')
+                    ->to('bar@example.com')
+                    ->subject('Subject')
+                    ->html('<p>Lorem Ipsum</p>');
+                $mailer->send($message);
+                return 'bar';
+            });
+        });
+        
         return $app;
     }
 
@@ -394,5 +419,22 @@ class MailTest extends \Tobento\App\Testing\TestCase
         $fakeMail->mailer(name: 'default')
             ->sent(Message::class)
             ->assertTimes(2);
+    }
+    
+    public function testFollowingRedirects()
+    {
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $fakeMail->mailer(name: 'default')
+            ->sent(Message::class)
+            ->assertHasTo('foo@example.com');
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeMail()->mailer(name: 'default')
+            ->sent(Message::class)
+            ->assertHasTo('bar@example.com');
     }
 }

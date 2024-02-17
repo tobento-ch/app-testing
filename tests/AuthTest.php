@@ -20,6 +20,7 @@ use Tobento\Service\Requester\RequesterInterface;
 use Tobento\App\User\Middleware\Authenticated;
 use Tobento\App\User\Authentication\AuthInterface;
 use Tobento\App\User\UserRepositoryInterface;
+use Tobento\App\User\AddressRepositoryInterface;
 use Tobento\App\Seeding\User\UserFactory;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -39,6 +40,7 @@ class AuthTest extends \Tobento\App\Testing\TestCase
     {
         // delete all users after each test:
         $this->getApp()->get(UserRepositoryInterface::class)->delete(where: []);
+        $this->getApp()->get(AddressRepositoryInterface::class)->delete(where: []);
     }
 
     public function testAuthenticatedWithInMemoryTokenStorage()

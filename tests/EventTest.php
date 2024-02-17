@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\Test;
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Tobento\Service\Event\EventsInterface;
 use Tobento\Service\Event\Test\Mock\FooListener;
 use Tobento\Service\Event\Test\Mock\FooEvent;
@@ -28,7 +29,21 @@ class EventTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\Event\Boot\Event::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser, EventsInterface $events) {
+                $events->dispatch(new FooEvent());
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function (ResponserInterface $responser, EventsInterface $events) {
+                $events->dispatch(new BarEvent());
+                return 'bar';
+            });
+        });
+        
         return $app;
     }
 
@@ -153,5 +168,21 @@ class EventTest extends \Tobento\App\Testing\TestCase
         $http = $this->fakeHttp();
         $this->runApp();
         $events->assertListening(FooEvent::class, FooListener::class);
+    }
+    
+    public function testFollowingRedirects()
+    {
+        $events = $this->fakeEvents();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $events->assertDispatched(FooEvent::class);
+        $events->assertNotDispatched(BarEvent::class);
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeEvents()
+            ->assertNotDispatched(FooEvent::class)
+            ->assertDispatched(BarEvent::class);
     }
 }

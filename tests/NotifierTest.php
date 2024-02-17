@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\Test;
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Notifier\NotifierInterface;
 use Tobento\Service\Notifier\ChannelMessagesInterface;
@@ -28,7 +29,35 @@ class NotifierTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\Notifier\Boot\Notifier::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser, NotifierInterface $notifier) {
+                $notifier->send(
+                    new Notification(
+                        subject: 'Foo',
+                        content: 'Foo',
+                        channels: ['mail'],
+                    ),
+                    new Recipient(email: 'mail@example.com'),
+                );
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function (ResponserInterface $responser, NotifierInterface $notifier) {
+                $notifier->send(
+                    new Notification(
+                        subject: 'Bar',
+                        content: 'Bar',
+                        channels: ['mail'],
+                    ),
+                    new Recipient(email: 'mail@example.com'),
+                );
+                return 'bar';
+            });
+        });
+        
         return $app;
     }
 
@@ -181,5 +210,22 @@ class NotifierTest extends \Tobento\App\Testing\TestCase
         
         $this->runApp();
         $notifier->assertNothingSent();
+    }
+    
+    public function testFollowingRedirects()
+    {
+        $notifier = $this->fakeNotifier();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $notifier->assertSent(Notification::class, static function(ChannelMessagesInterface $messages): bool {
+            return $messages->notification()->getSubject() === 'Foo';
+        });
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeNotifier()->assertSent(Notification::class, static function(ChannelMessagesInterface $messages): bool {
+            return $messages->notification()->getSubject() === 'Bar';
+        });
     }
 }

@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\Test;
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\JobInterface;
@@ -27,7 +28,28 @@ class QueueTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\Queue\Boot\Queue::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser, QueueInterface $queue) {
+                $queue->push(new Job(
+                    name: 'foo',
+                    payload: ['key' => 'value'],
+                ));
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function (QueueInterface $queue) {
+                $queue->push(new Job(
+                    name: 'bar',
+                    payload: ['key' => 'value'],
+                ));
+                return 'bar';
+            });
+        });
+        
+        
         return $app;
     }
 
@@ -139,5 +161,18 @@ class QueueTest extends \Tobento\App\Testing\TestCase
         
         $this->runApp();
         $fakeQueue->queue(name: 'sync')->assertNothingPushed();
-    }    
+    }
+    
+    public function testFollowingRedirects()
+    {
+        $fakeQueue = $this->fakeQueue();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $fakeQueue->queue(name: 'sync')->assertPushed('foo');
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeQueue()->queue(name: 'sync')->assertPushed('bar');
+    }
 }

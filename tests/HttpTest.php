@@ -16,8 +16,10 @@ namespace Tobento\App\Testing\Test;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Cookie\CookieValuesInterface;
+use Tobento\Service\Session\SessionInterface;
 
 class HttpTest extends \Tobento\App\Testing\TestCase
 {
@@ -25,6 +27,7 @@ class HttpTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\Session::class);
         $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\Http\Boot\Cookies::class);
         return $app;
@@ -220,5 +223,55 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         });
         
         $http->response()->assertBodySame('foo.txt');
+    }
+    
+    public function testSession()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (ServerRequestInterface $request) {
+                $session = $request->getAttribute(SessionInterface::class);
+                $session->set('key', 'value');
+                return 'blog';
+            });
+        });
+        
+        $http->response()
+            ->assertStatus(200)
+            ->assertHasSession('key')
+            ->assertHasSession('key', 'value')
+            ->assertSessionMissing('foo');
+    }
+    
+    public function testAssertLocation()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'redirects');
+        
+        $app = $this->bootingApp();
+        $app->get(RouterInterface::class)->get('redirects', function (ResponserInterface $responser) {
+            return $responser->redirect(uri: 'redirects-to-article');
+        });
+        
+        $http->response()->assertLocation('redirects-to-article');
+    }
+    
+    public function testAssertRedirectToRoute()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'redirects');
+        
+        $app = $this->bootingApp();
+        $app->get(RouterInterface::class)->get('redirects', function (ResponserInterface $responser, RouterInterface $router) {
+            return $responser->redirect(uri: $router->url('foo', ['id' => '5']));
+        });
+        
+        $app->get(RouterInterface::class)->get('foo/{id}', function ($id) {
+            return 'foo/'.$id;
+        })->name('foo');
+        
+        $http->response()->assertRedirectToRoute('foo', ['id' => '5']);
     }
 }

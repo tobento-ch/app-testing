@@ -15,6 +15,7 @@ namespace Tobento\App\Testing\Test;
 
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Config\ConfigInterface;
 
@@ -24,6 +25,18 @@ class ConfigTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser) {
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function () {
+                return 'bar';
+            });
+        });
+        
         return $app;
     }
 
@@ -39,4 +52,18 @@ class ConfigTest extends \Tobento\App\Testing\TestCase
             ->assertExists(key: 'http.hosts')
             ->assertSame(key: 'http.hosts', value: ['example.de']);
     }
+    
+    public function testFollowingRedirects()
+    {
+        $config = $this->fakeConfig();
+        $config->with('app.environment', 'testing');
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $config->assertSame(key: 'app.environment', value: 'testing');
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeConfig()->assertSame(key: 'app.environment', value: 'testing');
+    }    
 }

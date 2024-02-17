@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\Test;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tobento\Service\Responser\ResponserInterface;
 use Tobento\Service\FileStorage\StoragesInterface;
 use Tobento\Service\FileStorage\Visibility;
 
@@ -25,7 +26,23 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Http\Boot\RequesterResponser::class);
         $app->boot(\Tobento\App\FileStorage\Boot\FileStorage::class);
+        
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('foo', function (ResponserInterface $responser, StoragesInterface $storages) {
+                $storage = $storages->get('uploads');
+                $storage->write(path: 'foo.txt', content: 'Foo');
+                return $responser->redirect(uri: 'bar');
+            });
+
+            $router->get('bar', function (ResponserInterface $responser, StoragesInterface $storages) {
+                $storage = $storages->get('uploads');
+                $storage->write(path: 'bar.txt', content: 'Bar');
+                return 'bar';
+            });
+        });
+        
         return $app;
     }
 
@@ -80,5 +97,18 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
             ->assertFolderExists('foo/bar')
             ->assertFolderNotExist('baz')
             ->assertVisibilityChanged('foo/bar');
+    }
+    
+    public function testFollowingRedirects()
+    {
+        $fileStorage = $this->fakeFileStorage();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $http->response()->assertStatus(302);
+        $fileStorage->storage(name: 'uploads')->assertCreated('foo.txt');
+        
+        $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
+        $this->fakeFileStorage()->storage(name: 'uploads')->assertCreated('bar.txt');
     }
 }
