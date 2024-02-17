@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\User;
 
 use PHPUnit\Framework\TestCase;
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\App\User\UserInterface;
 use Tobento\App\User\UserRepositoryInterface;
@@ -30,7 +31,7 @@ use Tobento\Service\Session\SessionInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Clock\ClockInterface;
 
-final class FakeAuth
+final class FakeAuth implements FakerInterface
 {
     private null|TokenStorageInterface $tokenStorage = null;
     
@@ -57,6 +58,29 @@ final class FakeAuth
     }
     
     /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        $fakeAuth = new static($app);
+        
+        if (!is_null($this->tokenStorageName)) {
+            $fakeAuth->tokenStorage($this->tokenStorageName);
+        }
+        
+        $auth = $this->app->get(AuthInterface::class);
+        
+        if ($auth->hasAuthenticated()) {
+            $fakeAuth->authenticatedAs($auth->getAuthenticated()->token());
+        }
+        
+        return $fakeAuth;
+    }
+    
+    /**
      * Set the authenticated user.
      *
      * @param UserInterface|TokenInterface $token
@@ -66,6 +90,17 @@ final class FakeAuth
     {
         if ($token instanceof UserInterface) {
             $token = $this->createToken($token);
+        }
+        
+        if ($this->app->has(ServerRequestInterface::class)) {
+            $request = $this->app->get(ServerRequestInterface::class);
+            
+            $this->app->set(
+                ServerRequestInterface::class,
+                $request->withHeader('X-Auth-Token', $token->id())
+            )->prototype();
+            
+            return $this;
         }
         
         $this->app->on(

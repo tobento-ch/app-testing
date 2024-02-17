@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Mail;
 
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\Mail\MailersInterface;
 use Tobento\Service\Mail\MailerInterface;
 use Tobento\Service\Mail\Mailers;
 
-final class FakeMail
+final class FakeMail implements FakerInterface
 {
     /**
      * Create a new FakeMail.
@@ -41,6 +42,17 @@ final class FakeMail
                 return new Mailers(...$fakeMailers);
             }
         );
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        return new static($app);
     }
 
     /**

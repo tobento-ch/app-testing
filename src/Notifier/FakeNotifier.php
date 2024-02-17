@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\Notifier;
 
 use PHPUnit\Framework\TestCase;
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\Notifier\NotifierInterface;
 use Tobento\Service\Notifier\ChannelsInterface;
@@ -21,7 +22,7 @@ use Tobento\Service\Notifier\ChannelInterface;
 use Tobento\Service\Notifier\Channels;
 use Closure;
 
-final class FakeNotifier
+final class FakeNotifier implements FakerInterface
 {
     /**
      * Create a new FakeNotifier.
@@ -51,6 +52,17 @@ final class FakeNotifier
                 return new Channels(...$fakeChannels);
             }
         );
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        return new static($app);
     }
     
     /**

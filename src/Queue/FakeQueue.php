@@ -13,13 +13,14 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Queue;
 
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\Queue\QueuesInterface;
 use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\JobProcessorInterface;
 use Tobento\Service\Queue\Queues;
 
-final class FakeQueue
+final class FakeQueue implements FakerInterface
 {
     /**
      * Create a new FakeQueue.
@@ -42,6 +43,17 @@ final class FakeQueue
                 return new Queues(...$fakeQueues);
             }
         );
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        return new static($app);
     }
 
     /**

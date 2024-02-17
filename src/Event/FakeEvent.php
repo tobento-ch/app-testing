@@ -13,11 +13,14 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Event;
 
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\Event\EventsInterface;
 
-final class FakeEvent
+final class FakeEvent implements FakerInterface
 {
+    protected null|TestEvents $testEvents = null;
+    
     /**
      * Create a new FakeQueue.
      *
@@ -25,7 +28,30 @@ final class FakeEvent
      */
     public function __construct(
         private AppInterface $app,
-    ) {}
+    ) {
+        /*$app->on(
+            EventsInterface::class,
+            function(EventsInterface $events): EventsInterface {
+                if ($this->testEvents) {
+                    return $this->testEvents->setEvents(events: $events);
+                }
+                return $events;
+            }
+        )->priority(-1500);*/
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        $fakeEvent = new static($app);
+        $fakeEvent->events();
+        return $fakeEvent;
+    }
 
     /**
      * Returns the test events.
@@ -34,15 +60,17 @@ final class FakeEvent
      */
     public function events(): TestEvents
     {
-        $testEvents = new TestEvents();
+        if (is_null($this->testEvents)) {
+            $this->testEvents = new TestEvents();
+        }
 
         $this->app->on(
             EventsInterface::class,
-            function(EventsInterface $events) use ($testEvents): EventsInterface {
-                return $testEvents->setEvents(events: $events);
+            function(EventsInterface $events): EventsInterface {
+                return $this->testEvents->setEvents(events: $events);
             }
         )->priority(-1500);
         
-        return $testEvents;
+        return $this->testEvents;
     }
 }

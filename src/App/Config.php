@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\App;
 use Tobento\Service\Config\Config as DefaultConfig;
 use Tobento\Service\Config\DataInterface;
 use Tobento\Service\Config\ConfigLoadException;
+use Tobento\Service\Config\ConfigNotFoundException;
 use Tobento\Service\Dir\DirInterface;
 use Tobento\Service\Collection\Collection;
 
@@ -98,13 +99,27 @@ final class Config extends DefaultConfig
      * throws ConfigNotFoundException
      */
     public function get(string $key, mixed $default = null, null|int|string|array $locale = null): mixed
-    {        
-        $data = parent::get($key, $default, $locale);
-        
-        if (isset($this->testData[$key])) {
+    {
+        if (array_key_exists($key, $this->testData)) {
             return $this->testData[$key];
         }
         
-        return $data;
+        return parent::get($key, $default, $locale);
+    }
+    
+    /**
+     * Returns true if config exists, otherwise false.
+     * 
+     * @param string $key The key.
+     * @param null|string|int|array $locale The locale
+     * @return bool
+     */
+    public function has(string $key, null|int|string|array $locale = null): bool
+    {
+        if (parent::has($key, $locale)) {
+            return true;
+        }
+        
+        return array_key_exists($key, $this->testData);
     }
 }

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\FileStorage;
 
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\FileStorage\StoragesInterface;
 use Tobento\Service\FileStorage\StorageInterface;
@@ -21,7 +22,7 @@ use Tobento\Service\FileStorage\Flysystem;
 use Tobento\Service\Filesystem\Dir;
 use Nyholm\Psr7\Factory\Psr17Factory;
 
-final class FakeFileStorage
+final class FakeFileStorage implements FakerInterface
 {
     /**
      * Create a new FakeFileStorage.
@@ -52,6 +53,17 @@ final class FakeFileStorage
                 return $fakeStorages;
             }
         );
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        return new static($app);
     }
 
     /**

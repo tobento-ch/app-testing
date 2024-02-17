@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\App;
 
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\App\Testing\App\Config;
 use Tobento\Service\Config\ConfigInterface;
@@ -20,7 +21,7 @@ use Tobento\Service\Config\PhpLoader;
 use Tobento\Service\Collection\Translations;
 use PHPUnit\Framework\TestCase;
 
-final class FakeConfig
+final class FakeConfig implements FakerInterface
 {
     protected array $data = [];
     
@@ -47,6 +48,19 @@ final class FakeConfig
                 return $config;
             }
         );
+    }
+    
+    /**
+     * Returns a new instance.
+     *
+     * @param AppInterface $app
+     * @return static
+     */
+    public function new(AppInterface $app): static
+    {
+        $fakeConfig = new static($app);
+        $fakeConfig->data = $this->data;
+        return $fakeConfig;
     }
     
     /**
