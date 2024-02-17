@@ -15,6 +15,7 @@ namespace Tobento\App\Testing\Http;
 
 use Tobento\App\Http\ResponseEmitter as DefaultResponseEmitter;
 use Psr\Http\Message\ResponseInterface;
+use Throwable;
 
 /**
  * ResponseEmitter
@@ -29,8 +30,17 @@ class ResponseEmitter extends DefaultResponseEmitter
      */
     public function emit(ResponseInterface $response): void
     {
-        foreach($this->beforeHandlers as $handler) {
-            call_user_func($handler);
+        try {
+            foreach($this->beforeHandlers as $handler) {
+                $handler($response);
+            }
+            
+        } catch (Throwable $t) {
+            $response = $this->httpErrorHandlers->handleThrowable($t);
+            
+            if (! $response instanceof ResponseInterface) {
+                throw $t;
+            }
         }
     }
 }
