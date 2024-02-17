@@ -26,6 +26,10 @@ trait InteractsWithNotifier
      */
     final public function fakeNotifier(null|AppInterface $app = null): FakeNotifier
     {
-        return new FakeNotifier($app ?: $this->getApp());
+        if ($this->hasFaker(FakeNotifier::class)) {
+            return $this->getFaker(FakeNotifier::class);
+        }
+        
+        return $this->addFaker(new FakeNotifier($app ?: $this->getApp()));
     }
 }

@@ -26,6 +26,10 @@ trait InteractsWithUser
      */
     final public function fakeAuth(null|AppInterface $app = null): FakeAuth
     {
-        return new FakeAuth($app ?: $this->getApp());
+        if ($this->hasFaker(FakeAuth::class)) {
+            return $this->getFaker(FakeAuth::class);
+        }
+        
+        return $this->addFaker(new FakeAuth($app ?: $this->getApp()));
     }
 }

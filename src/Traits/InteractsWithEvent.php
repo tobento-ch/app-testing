@@ -27,6 +27,10 @@ trait InteractsWithEvent
      */
     final public function fakeEvents(null|AppInterface $app = null): TestEvents
     {
-        return (new FakeEvent($app ?: $this->getApp()))->events();
+        if ($this->hasFaker(FakeEvent::class)) {
+            return $this->getFaker(FakeEvent::class)->events();
+        }
+        
+        return $this->addFaker(new FakeEvent($app ?: $this->getApp()))->events();
     }
 }

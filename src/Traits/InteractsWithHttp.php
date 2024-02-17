@@ -37,10 +37,15 @@ trait InteractsWithHttp
      */
     final public function fakeHttp(null|AppInterface $app = null): FakeHttp
     {
-        return new FakeHttp(
+        if ($this->hasFaker(FakeHttp::class)) {
+            return $this->getFaker(FakeHttp::class);
+        }
+        
+        return $this->addFaker(new FakeHttp(
             app: $app ?: $this->getApp(),
             fakeConfig: $this->fakeConfig(),
             fileFactory: $this->getFileFactory(),
-        );
+            testCase: $this,
+        ));
     }
 }

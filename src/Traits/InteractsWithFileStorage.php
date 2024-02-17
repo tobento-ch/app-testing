@@ -26,6 +26,10 @@ trait InteractsWithFileStorage
      */
     final public function fakeFileStorage(null|AppInterface $app = null): FakeFileStorage
     {
-        return new FakeFileStorage($app ?: $this->getApp());
+        if ($this->hasFaker(FakeFileStorage::class)) {
+            return $this->getFaker(FakeFileStorage::class);
+        }
+        
+        return $this->addFaker(new FakeFileStorage($app ?: $this->getApp()));
     }
 }

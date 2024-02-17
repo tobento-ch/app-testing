@@ -26,6 +26,10 @@ trait InteractsWithQueue
      */
     final public function fakeQueue(null|AppInterface $app = null): FakeQueue
     {
-        return new FakeQueue($app ?: $this->getApp());
+        if ($this->hasFaker(FakeQueue::class)) {
+            return $this->getFaker(FakeQueue::class);
+        }
+        
+        return $this->addFaker(new FakeQueue($app ?: $this->getApp()));
     }
 }

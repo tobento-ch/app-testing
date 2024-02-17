@@ -26,6 +26,10 @@ trait InteractsWithMail
      */
     final public function fakeMail(null|AppInterface $app = null): FakeMail
     {
-        return new FakeMail($app ?: $this->getApp());
+        if ($this->hasFaker(FakeMail::class)) {
+            return $this->getFaker(FakeMail::class);
+        }
+        
+        return $this->addFaker(new FakeMail($app ?: $this->getApp()));
     }
 }

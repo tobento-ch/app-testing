@@ -18,8 +18,6 @@ use Tobento\App\Testing\App\FakeConfig;
 
 trait InteractsWithConfig
 {
-    protected null|FakeConfig $fakeConfig = null;
-    
     /**
      * Returns a new fake config instance.
      *
@@ -28,10 +26,10 @@ trait InteractsWithConfig
      */
     final public function fakeConfig(null|AppInterface $app = null): FakeConfig
     {
-        if ($this->fakeConfig) {
-            return $this->fakeConfig;
+        if ($this->hasFaker(FakeConfig::class)) {
+            return $this->getFaker(FakeConfig::class);
         }
-
-        return $this->fakeConfig = new FakeConfig($app ?: $this->getApp());
+        
+        return $this->addFaker(new FakeConfig($app ?: $this->getApp()));
     }
 }
