@@ -13,27 +13,20 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Test;
 
-use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
+use Tobento\App\Testing\Database\RefreshDatabases;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
 use Tobento\Service\Requester\ResponserInterface;
 use Tobento\App\User\Middleware\Authenticated;
 use Tobento\App\User\Middleware\Unauthenticated;
 use Tobento\App\User\Authentication\AuthInterface;
-use Tobento\App\User\UserRepositoryInterface;
-use Tobento\App\User\AddressRepositoryInterface;
 use Tobento\App\Seeding\User\UserFactory;
 use Psr\Http\Message\ServerRequestInterface;
 
 class AuthSubrequestTest extends \Tobento\App\Testing\TestCase
 {
-    public function tearDown(): void
-    {
-        // delete all users after each test:
-        $this->getApp()->get(UserRepositoryInterface::class)->delete(where: []);
-        $this->getApp()->get(AddressRepositoryInterface::class)->delete(where: []);
-    }
+    use RefreshDatabases;
     
     public function createApp(): AppInterface
     {
@@ -68,7 +61,7 @@ class AuthSubrequestTest extends \Tobento\App\Testing\TestCase
     {
         $http = $this->fakeHttp();
         $http->request('GET', 'login');
-        $auth = $this->fakeAuth()->tokenStorage('storage');
+        $auth = $this->fakeAuth();
         
         $app = $this->bootingApp();
         $user = $auth->getUserRepository()->create(['username' => 'tom']);
@@ -87,7 +80,7 @@ class AuthSubrequestTest extends \Tobento\App\Testing\TestCase
     {
         $http = $this->fakeHttp();
         $http->request('GET', 'login');
-        $auth = $this->fakeAuth()->tokenStorage('storage');
+        $auth = $this->fakeAuth();
         
         $app = $this->bootingApp();
         $user = $auth->getUserRepository()->create(['username' => 'tom']);
@@ -118,7 +111,7 @@ class AuthSubrequestTest extends \Tobento\App\Testing\TestCase
     {
         $http = $this->fakeHttp();
         $http->request('GET', 'foo');
-        $auth = $this->fakeAuth()->tokenStorage('storage');
+        $auth = $this->fakeAuth();
         
         $app = $this->bootingApp();
         $user = $auth->getUserRepository()->create(['username' => 'tom']);
