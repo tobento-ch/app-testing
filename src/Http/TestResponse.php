@@ -162,7 +162,7 @@ class TestResponse implements Stringable
 
         $headerValue = $this->response->getHeaderLine($name);
 
-        if ($value) {
+        if (!is_null($value)) {
             TestCase::assertSame(
                 $value,
                 $headerValue,
@@ -262,7 +262,7 @@ class TestResponse implements Stringable
             sprintf('Session is missing expected key [%s].', $key)
         );
 
-        if ($value) {
+        if (!is_null($value)) {
             $sessionValue = $this->session?->get($key);
             
             TestCase::assertSame(
