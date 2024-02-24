@@ -15,6 +15,7 @@ namespace Tobento\App\Testing\Test;
 
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
+use Tobento\App\Testing\Database\RefreshDatabases;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
 use Tobento\App\User\Middleware\Authenticated;
@@ -26,6 +27,8 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class AuthTest extends \Tobento\App\Testing\TestCase
 {
+    use RefreshDatabases;
+    
     public function createApp(): AppInterface
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
@@ -34,13 +37,6 @@ class AuthTest extends \Tobento\App\Testing\TestCase
         $app->boot(\Tobento\App\User\Boot\HttpUserErrorHandler::class);
         $app->boot(\Tobento\App\User\Boot\User::class);
         return $app;
-    }
-    
-    public function tearDown(): void
-    {
-        // delete all users after each test:
-        $this->getApp()->get(UserRepositoryInterface::class)->delete(where: []);
-        $this->getApp()->get(AddressRepositoryInterface::class)->delete(where: []);
     }
 
     public function testAuthenticatedWithInMemoryTokenStorage()
@@ -65,12 +61,12 @@ class AuthTest extends \Tobento\App\Testing\TestCase
         $auth->assertAuthenticated();
     }
     
-    public function testAuthenticatedWithStorageTokenStorage()
+    public function testAuthenticatedWithRepositoryTokenStorage()
     {
         $http = $this->fakeHttp();
         $http->request('GET', 'profile');
         $auth = $this->fakeAuth();
-        $auth->tokenStorage('storage');
+        $auth->tokenStorage('repository');
         
         $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
             $router->get('profile', function (ServerRequestInterface $request) {
