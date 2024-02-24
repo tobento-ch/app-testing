@@ -25,7 +25,8 @@ use Tobento\App\User\Authentication\Token\TokenInterface;
 use Tobento\App\User\Authentication\Token\TokenStorageInterface;
 use Tobento\App\User\Authentication\Token\InMemoryStorage;
 use Tobento\App\User\Authentication\Token\SessionStorage;
-use Tobento\App\User\Authentication\Token\ServiceStorage;
+use Tobento\App\User\Authentication\Token\RepositoryStorage;
+use Tobento\App\User\Authentication\Token\TokenRepository;
 use Tobento\Service\Storage\StorageInterface;
 use Tobento\Service\Session\SessionInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -208,11 +209,13 @@ final class FakeAuth implements FakerInterface
                     clock: $this->app->get(ClockInterface::class),
                     regenerateId: false,
                 );
-            case 'storage':
-                return new ServiceStorage(
+            case 'repository':
+                return new RepositoryStorage(
                     clock: $this->app->get(ClockInterface::class),
-                    storage: $this->app->get(StorageInterface::class)->new(),
-                    table: 'auth_tokens',
+                    repository: new TokenRepository(
+                        storage: $this->app->get(StorageInterface::class)->new(),
+                        table: 'auth_tokens',
+                    ),
                 );
             default:
                 return new InMemoryStorage(
