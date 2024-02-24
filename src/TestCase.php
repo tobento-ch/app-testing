@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 use Tobento\App\AppInterface;
 use Tobento\App\AppFactory;
 use Tobento\Service\Filesystem\Dir;
+use ReflectionClass;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -44,6 +45,15 @@ abstract class TestCase extends BaseTestCase
         }
         
         $this->fakers = [];
+        
+        $this->runTraits('setUp');
+    }
+    
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        
+        $this->runTraits('tearDown');
     }
 
     /**
@@ -57,9 +67,11 @@ abstract class TestCase extends BaseTestCase
      * Create a new tmp App instance.
      *
      * @param string $rootDir
+     * @param string $folder
+     * @param bool $fresh
      * @return AppInterface
      */
-    public function createTmpApp(string $rootDir): AppInterface
+    public function createTmpApp(string $rootDir, string $folder = 'app', bool $fresh = false): AppInterface
     {
         $rootDir = realpath($rootDir);
         
@@ -67,10 +79,14 @@ abstract class TestCase extends BaseTestCase
             throw new \InvalidArgumentException(sprintf('Invalid $rootDir defined on %s', __METHOD__));
         }
         
-        $appDir = $rootDir.'/tests/tmp/app/';
+        $appDir = $rootDir.'/tests/tmp/'.$folder.'/';
+        
+        if ($fresh) {
+            (new Dir())->delete($appDir);
+        }
         
         (new Dir())->create($appDir);
-        
+                
         $app = (new AppFactory())->createApp();
         
         $app->dirs()
@@ -186,5 +202,32 @@ abstract class TestCase extends BaseTestCase
     public function getFakers(): array
     {
         return $this->fakers;
+    }
+    
+    /**
+     * Run traits.
+     *
+     * @param string $method
+     * @return void
+     */
+    private function runTraits(string $method): void
+    {
+        $ref = new ReflectionClass(static::class);
+
+        foreach ($ref->getTraits() as $trait) {
+            if (method_exists($this, $name = $method . $trait->getShortName())) {
+                $this->{$name}();
+            }
+        }
+
+        while($parent = $ref->getParentClass()) {
+            foreach ($parent->getTraits() as $trait) {
+                if (method_exists($this, $name = $method . $trait->getShortName())) {
+                    $this->{$name}();
+                }
+            }
+
+            $ref = $parent;
+        }
     }
 }
