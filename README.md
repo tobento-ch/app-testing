@@ -19,6 +19,9 @@ Testing support for the app.
     - [Event Tests](#event-tests)
     - [Mail Tests](#mail-tests)
     - [Notifier Tests](#notifier-tests)
+    - [Database Tests](#database-tests)
+        - [Reset Databases](#reset-databases)
+        - [Replace Databases](#replace-databases)
 - [Credits](#credits)
 ___
 
@@ -141,6 +144,8 @@ final class SomeAppTest extends TestCase
 {
     protected function tearDown(): void
     {
+        parent::tearDown();
+        
         $this->deleteAppDirectory();
     }
 }
@@ -328,7 +333,7 @@ final class SomeAppTest extends TestCase
         // faking:
         $http = $this->fakeHttp();
         $http->request('GET', 'login');
-        $auth = $this->fakeAuth()->tokenStorage('storage');
+        $auth = $this->fakeAuth();
         
         // you may interact with the app:
         $app = $this->bootingApp();
@@ -435,7 +440,7 @@ final class SomeAppTest extends TestCase
         // you may change the token storage:
         //$auth->tokenStorage('inmemory');
         //$auth->tokenStorage('session');
-        //$auth->tokenStorage('storage');
+        //$auth->tokenStorage('repository');
         
         // boot the app:
         $app = $this->bootingApp();
@@ -503,16 +508,14 @@ This is one possible way of seeding users for testing. You could also seed users
 
 ```php
 use Tobento\App\Testing\TestCase;
+use Tobento\App\Testing\Database\RefreshDatabases;
 use Tobento\App\User\UserRepositoryInterface;
+use Tobento\App\User\AddressRepositoryInterface;
 use Tobento\App\Seeding\User\UserFactory;
 
 final class SomeAppTest extends TestCase
 {
-    public function tearDown(): void
-    {
-        // delete all users after each test:
-        $this->getApp()->get(UserRepositoryInterface::class)->delete(where: []);
-    }
+    use RefreshDatabases;
 
     public function testSomeRouteWhileAuthenticated(): void
     {
@@ -868,7 +871,7 @@ use Tobento\Service\Notifier\ChannelMessagesInterface;
 use Tobento\Service\Notifier\Notification;
 use Tobento\Service\Notifier\Recipient;
 
-class MailTest extends \Tobento\App\Testing\TestCase
+class NotifierTest extends \Tobento\App\Testing\TestCase
 {
     public function createApp(): AppInterface
     {
@@ -941,6 +944,106 @@ class MailTest extends \Tobento\App\Testing\TestCase
             })
             // Asserting that no notifications were sent:
             ->assertNothingSent();
+    }
+}
+```
+
+## Database Tests
+
+If you have installed the [App Database](https://github.com/tobento-ch/app-database) bundle you may interact with your databases.
+
+### Reset Databases
+
+There are two strategies to reset your databases:
+
+**Refresh Strategy**
+
+This strategy cleans your database after each test.
+
+```php
+use Tobento\App\Testing\TestCase;
+use Tobento\App\Testing\Database\RefreshDatabases;
+
+final class SomeAppTest extends TestCase
+{
+    use RefreshDatabases;
+    
+    public function testSomething(): void
+    {
+        // ...
+    }
+}
+```
+
+**Migrate Strategy**
+
+This strategy cleans your database after each test using migrations.
+
+```php
+use Tobento\App\Testing\TestCase;
+use Tobento\App\Testing\Database\MigrateDatabases;
+
+final class SomeAppTest extends TestCase
+{
+    use MigrateDatabases;
+    
+    public function testSomething(): void
+    {
+        // ...
+    }
+}
+```
+
+### Replace Databases
+
+You may replace your database to test different databases.
+
+**Example replacing the default storage database:**
+
+```php
+use Tobento\App\Testing\TestCase;
+use Tobento\App\AppInterface;
+use Tobento\App\Testing\Database\RefreshDatabases;
+use Tobento\Service\Database\DatabasesInterface;
+use Tobento\Service\Database\DatabaseInterface;
+use Tobento\Service\Database\PdoDatabase;
+
+final class SomeAppTest extends TestCase
+{
+    use RefreshDatabases;
+    
+    public function createApp(): AppInterface
+    {
+        $app = $this->createTmpApp(rootDir: __DIR__.'/..', folder: 'app-mysql');
+        $app->boot(\Tobento\App\User\Boot\User::class);
+        
+        // example changing databases:
+        $app->on(DatabasesInterface::class, static function (DatabasesInterface $databases) {
+            // change default storage database:
+            $databases->addDefault('storage', 'mysql-storage');
+            
+            // you may change the mysql database:
+            $databases->register(
+                'mysql',
+                function(string $name): DatabaseInterface {
+                    return new PdoDatabase(
+                        new \PDO(
+                            dsn: 'mysql:host=localhost;dbname=app_testing',
+                            username: 'root',
+                            password: '',
+                        ),
+                        $name
+                    );
+                }
+            );
+        });
+        
+        return $app;
+    }
+    
+    public function testSomething(): void
+    {
+        // ...
     }
 }
 ```
