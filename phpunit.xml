@@ -27,6 +27,13 @@
         </include>
     </coverage>
     
+    <php>
+        <env name="TEST_DATABASE_PDO_MYSQL" value="false" />
+        <env name="TEST_DATABASE_PDO_MYSQL_DSN" value="mysql:host=localhost;dbname=app_testing" />
+        <env name="TEST_DATABASE_PDO_MYSQL_USERNAME" value="root" />
+        <env name="TEST_DATABASE_PDO_MYSQL_PASSWORD" value="" />
+    </php>
+    
     <logging>
         <junit outputFile="build/report.junit.xml"/>
         <testdoxHtml outputFile="build/coverage"/>
