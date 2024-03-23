@@ -255,6 +255,7 @@ $http->response()
     ->assertBodySame('foo')
     ->assertBodyNotSame('bar')
     ->assertBodyContains('foo')
+    ->assertBodyNotContains('bar')
     ->assertContentType('application/json')
     ->assertHasHeader(name: 'Content-type')
     ->assertHasHeader(name: 'Content-type', value: 'application/json') // with value
