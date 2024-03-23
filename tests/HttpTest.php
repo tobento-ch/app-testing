@@ -74,6 +74,7 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             ->assertBodySame(json_encode(['page' => 'blog']))
             ->assertBodyNotSame('bar')
             ->assertBodyContains('blog')
+            ->assertBodyNotContains('foo')
             ->assertContentType('application/json')
             ->assertHasHeader(name: 'Content-type')
             ->assertHasHeader(name: 'Content-type', value: 'application/json')
