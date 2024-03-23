@@ -108,17 +108,34 @@ class TestResponse implements Stringable
     }
     
     /**
-     * Asserts if the response body is the same as the specified body.
+     * Asserts if the response body contains the specified value.
      *
-     * @param string $body
+     * @param string $value
      * @return static
      */
-    public function assertBodyContains(string $body): static
+    public function assertBodyContains(string $value): static
     {
         TestCase::assertStringContainsString(
-            $body,
+            $value,
             (string)$this->response->getBody(),
-            sprintf('Response doesn\'t contain [%s]', $body)
+            sprintf('Response doesn\'t contain [%s]', $value)
+        );
+        
+        return $this;
+    }
+    
+    /**
+     * Asserts if the response body does not contain the specified value.
+     *
+     * @param string $value
+     * @return static
+     */
+    public function assertBodyNotContains(string $value): static
+    {
+        TestCase::assertStringNotContainsString(
+            $value,
+            (string)$this->response->getBody(),
+            sprintf('Response does contain [%s]', $value)
         );
         
         return $this;
