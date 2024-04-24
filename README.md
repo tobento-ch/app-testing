@@ -13,6 +13,8 @@ Testing support for the app.
         - [Request And Response](#request-and-response)
         - [Subsequent Requests](#subsequent-requests)
         - [File Uploads](#file-uploads)
+        - [Crawl Response Content](#crawl-response-content)
+        - [Response Macros](#response-macros)
     - [Auth Tests](#auth-tests)
     - [File Storage Tests](#file-storage-tests)
     - [Queue Tests](#queue-tests)
@@ -417,6 +419,153 @@ $file = $http->getFileFactory()->createFileWithContent(
     content: 'Hello world',
     mimeType: 'text/plain'
 );
+```
+
+### Crawl Response Content
+
+You may crawl the response content using the [Symfony Dom Crawler](https://symfony.com/doc/current/components/dom_crawler.html).
+
+```php
+use Tobento\App\Testing\TestCase;
+use Symfony\Component\DomCrawler\Crawler;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/comments');
+        
+        // assertions:
+        $response = $http->response()->assertStatus(200);
+        
+        $this->assertCount(4, $response->crawl()->filter('.comment'));
+        
+        // returns the crawler:
+        $crawler = $response()->crawl(); // Crawler
+    }
+}
+```
+
+**assertNodeExists**
+
+```php
+use Tobento\App\Testing\TestCase;
+use Symfony\Component\DomCrawler\Crawler;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/comments');
+        
+        // assertions:
+        $http->response()
+            ->assertStatus(200)
+            // Assert if a node exists:
+            ->assertNodeExists('a[href="https://example.com"]')
+            // Assert if a node exists based on a truth-test callback:
+            ->assertNodeExists('h1', fn (Crawler $n): bool => $n->text() === 'Comments')
+            // Assert if a node exists based on a truth-test callback:
+            ->assertNodeExists('ul', static function (Crawler $n) {
+                return $n->children()->count() === 2
+                    && $n->children()->first()->text() === 'foo';
+            });
+    }
+}
+```
+
+**assertNodeMissing**
+
+```php
+use Tobento\App\Testing\TestCase;
+use Symfony\Component\DomCrawler\Crawler;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/comments');
+        
+        // assertions:
+        $http->response()
+            ->assertStatus(200)
+            // Assert if a node is missing:
+            ->assertNodeMissing('h1')
+            // Assert if a node is missing based on a truth-test callback:
+            ->assertNodeMissing('p', static function (Crawler $n) {
+                return $n->attr('class') === 'error'
+                    && $n->text() === 'Error Message';
+            });
+    }
+}
+```
+
+**Example Form Crawling**
+
+```php
+use Tobento\App\Testing\TestCase;
+use Symfony\Component\DomCrawler\Crawler;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/comments');
+        
+        // assertions:
+        $response = $http->response()->assertStatus(200);
+        
+        $form = $response->crawl(
+            // you may pass a base uri or base href:
+            uri: 'http://www.example.com',
+            baseHref: null,
+        )->selectButton('My super button')->form();
+        
+        $this->assertSame('POST', $form->getMethod());
+    }
+}
+```
+
+### Response Macros
+
+You may want to write convenience helpers to the test response using macros.
+
+```php
+use Tobento\App\Testing\Http\TestResponse;
+
+final class SomeAppTest extends TestCase
+{
+    public function createApp(): AppInterface
+    {
+        // ...
+        
+        // we may add the macro here:
+        TestResponse::macro('assertOk', function(): static {
+            $this->assertStatus(200);                
+            return $this;
+        });
+
+        return $app;
+    }
+    
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'user/comments');
+        
+        // assertions:
+        $http->response()->assertOk();
+    }
+}
 ```
 
 ## Auth Tests
