@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Test;
 
+use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
@@ -20,6 +21,7 @@ use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Cookie\CookieValuesInterface;
 use Tobento\Service\Session\SessionInterface;
+use Symfony\Component\DomCrawler\Crawler;
 
 class HttpTest extends \Tobento\App\Testing\TestCase
 {
@@ -274,5 +276,197 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         })->name('foo');
         
         $http->response()->assertRedirectToRoute('foo', ['id' => '5']);
+    }
+    
+    public function testCrawling()
+    {
+        $http = $this->fakeHttp();
+        $http->request(
+            method: 'GET',
+            uri: 'blog',
+        );
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                $html = <<<'HTML'
+                <!DOCTYPE html>
+                <html>
+                    <body>
+                        <p class="message">Hello World!</p>
+                        <p>Hello Crawler!</p>
+                    </body>
+                </html>
+                HTML;
+                return $html;
+            });
+        });
+        
+        $response = $http->response()->assertStatus(200);
+        $this->assertSame('Hello World!', $response->crawl()->filter('body > p')->first()->text());
+    }
+    
+    public function testCrawlingForm()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                $html = <<<'HTML'
+                <!DOCTYPE html>
+                <html>
+                    <body>
+                        <h1>Title</h1>
+                        <form method="POST">
+                            <button id="my-super-button" type="submit">My super button</button>
+                        </form>
+                    </body>
+                </html>
+                HTML;
+                return $html;
+            });
+        });
+        
+        $response = $http->response()->assertStatus(200);
+        $form = $response->crawl(uri: 'http://www.example.com')->selectButton('My super button')->form();
+        $this->assertSame('POST', $form->getMethod());
+    }
+
+    public function testAssertNodeExists()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                $html = <<<'HTML'
+                <!DOCTYPE html>
+                <html>
+                    <body>
+                        <h1>Title</h1>
+                        <ul><li>foo</li><li>bar</li></ul>
+                        <a href="https://example.com">Link</p>
+                    </body>
+                </html>
+                HTML;
+                return $html;
+            });
+        });
+        
+        $http->response()
+            ->assertStatus(200)
+            ->assertNodeExists('h1', fn (Crawler $n): bool => $n->text() === 'Title')
+            ->assertNodeExists('ul', static function (Crawler $n) {
+                return $n->children()->count() === 2
+                    && $n->children()->first()->text() === 'foo';
+            })
+            ->assertNodeExists('a[href="https://example.com"]');
+    }
+    
+    public function testAssertNodeExistsThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The expected "h1" node was not found.');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h2>Title</h2></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeExists('h1');
+    }
+    
+    public function testAssertNodeExistsWithCallbackThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The expected "h1" node was not found.');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h1>Title</h1></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeExists('h1', fn (Crawler $n): bool => $n->text() === 'Foo');
+    }    
+    
+    public function testAssertNodeMissing()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h1>Title</h1></body></html>';
+            });
+        });
+        
+        $http->response()
+            ->assertStatus(200)
+            ->assertNodeMissing('h1', fn (Crawler $n): bool => $n->text() === 'Foo')
+            ->assertNodeMissing('h2');
+    }
+    
+    public function testAssertNodeMissingThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The unexpected "h1" node was found.');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h1>Title</h1></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeMissing('h1');
+    }
+    
+    public function testAssertNodeMissingWithCallbackThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The unexpected "h1" node was found.');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h1>Title</h1></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeMissing('h1', fn (Crawler $n): bool => $n->text() === 'Title');
+    }    
+    
+    public function testMacro()
+    {
+        \Tobento\App\Testing\Http\TestResponse::macro(
+            'assertOk',
+            function(): static {
+                $this->assertStatus(200);                
+                return $this;
+            }
+        );
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return 'blog';
+            });
+        });
+        
+        $http->response()->assertOk();
     }
 }
