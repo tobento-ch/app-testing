@@ -17,13 +17,20 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Tobento\Service\Session\SessionInterface;
 use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Macro\Macroable;
+use Symfony\Component\DomCrawler\Crawler;
 use Stringable;
+use Closure;
 
 /**
  * TestResponse
  */
 class TestResponse implements Stringable
 {
+    use Macroable {
+        __call as macroCall;
+    }
+    
     /**
      * @var array $cookies
      */    
@@ -50,6 +57,72 @@ class TestResponse implements Stringable
     public function response(): ResponseInterface
     {
         return $this->response;
+    }
+    
+    /**
+     * Returns the crawler.
+     *
+     * @param null|string $uri
+     * @param null|string $baseHref
+     * @param bool $useHtml5Parser
+     * @return Crawler
+     */
+    public function crawl(null|string $uri = null, null|string $baseHref = null, bool $useHtml5Parser = true): Crawler
+    {
+        if (empty($content = (string)$this->response->getBody())) {
+            TestCase::fail('The HTTP response is empty.');
+        }
+        
+        // pass in new version $useHtml5Parser
+        return new Crawler($content, $uri, $baseHref);
+    }
+    
+    /**
+     * Asserts if the response body contains the specified node selector.
+     *
+     * @param string $selector
+     * @param null|Closure $callback
+     * @return static
+     * @psalm-suppress TooManyArguments
+     */
+    public function assertNodeExists(string $selector, null|Closure $callback = null): static
+    {
+        $node = $this->crawl()->filter($selector);
+        $callback = $callback ?: static fn(): bool => true;
+        $exists = [];
+        $exists[] = $node->count() > 0;
+        $exists[] = $callback($node);
+
+        TestCase::assertTrue(
+            !in_array(false, $exists),
+            sprintf('The expected "%s" node was not found.', $selector)
+        );
+
+        return $this;
+    }
+    
+    /**
+     * Asserts if the response body does not contain the specified node selector.
+     *
+     * @param string $selector
+     * @param null|Closure $callback
+     * @return static
+     * @psalm-suppress TooManyArguments
+     */
+    public function assertNodeMissing(string $selector, null|Closure $callback = null): static
+    {
+        $node = $this->crawl()->filter($selector);
+        $callback = $callback ?: static fn(): bool => true;
+        $exists = [];
+        $exists[] = $node->count() > 0;
+        $exists[] = $callback($node);
+
+        TestCase::assertTrue(
+            in_array(false, $exists),
+            sprintf('The unexpected "%s" node was found.', $selector)
+        );
+
+        return $this;
     }
     
     /**
@@ -239,7 +312,7 @@ class TestResponse implements Stringable
         TestCase::assertArrayNotHasKey(
             $key,
             $this->cookies(),
-            \sprintf('Response has cookie with name [%s]', $key)
+            sprintf('Response has cookie with name [%s]', $key)
         );
 
         return $this;
@@ -259,7 +332,7 @@ class TestResponse implements Stringable
         TestCase::assertSame(
             $value,
             $this->cookies[$key],
-            \sprintf('Response cookie with name [%s] is not equal.', $key)
+            sprintf('Response cookie with name [%s] is not equal.', $key)
         );
 
         return $this;
@@ -381,6 +454,25 @@ class TestResponse implements Stringable
     public function __toString(): string
     {
         return (string)$this->response->getBody();
+    }
+    
+    /**
+     * Dynamically bind parameters to the test response.
+     *
+     * @param string $method
+     * @param array $parameters
+     * @return mixed
+     * @throws \BadMethodCallException
+     */
+    public function __call(string $method, array $parameters): mixed
+    {
+        if (static::hasMacro($method)) {
+            return $this->macroCall($method, $parameters);
+        }
+
+        throw new \BadMethodCallException(sprintf(
+            'Method %s::%s does not exist.', static::class, $method
+        ));
     }
     
     /**
