@@ -473,7 +473,7 @@ final class SomeAppTest extends TestCase
             ->assertNodeExists('ul', static function (Crawler $n) {
                 return $n->children()->count() === 2
                     && $n->children()->first()->text() === 'foo';
-            });
+            }, 'There first ul child has no text "foo"');
     }
 }
 ```
@@ -501,7 +501,7 @@ final class SomeAppTest extends TestCase
             ->assertNodeMissing('p', static function (Crawler $n) {
                 return $n->attr('class') === 'error'
                     && $n->text() === 'Error Message';
-            });
+            }, 'An unexpected error message was found');
     }
 }
 ```
