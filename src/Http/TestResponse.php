@@ -82,10 +82,11 @@ class TestResponse implements Stringable
      *
      * @param string $selector
      * @param null|Closure $callback
+     * @param null|string $message
      * @return static
      * @psalm-suppress TooManyArguments
      */
-    public function assertNodeExists(string $selector, null|Closure $callback = null): static
+    public function assertNodeExists(string $selector, null|Closure $callback = null, null|string $message = null): static
     {
         $node = $this->crawl()->filter($selector);
         $callback = $callback ?: static fn(): bool => true;
@@ -95,7 +96,7 @@ class TestResponse implements Stringable
 
         TestCase::assertTrue(
             !in_array(false, $exists),
-            sprintf('The expected "%s" node was not found.', $selector)
+            $message ?: sprintf('The expected "%s" node was not found.', $selector)
         );
 
         return $this;
@@ -106,10 +107,11 @@ class TestResponse implements Stringable
      *
      * @param string $selector
      * @param null|Closure $callback
+     * @param null|string $message
      * @return static
      * @psalm-suppress TooManyArguments
      */
-    public function assertNodeMissing(string $selector, null|Closure $callback = null): static
+    public function assertNodeMissing(string $selector, null|Closure $callback = null, null|string $message = null): static
     {
         $node = $this->crawl()->filter($selector);
         $callback = $callback ?: static fn(): bool => true;
@@ -119,7 +121,7 @@ class TestResponse implements Stringable
 
         TestCase::assertTrue(
             in_array(false, $exists),
-            sprintf('The unexpected "%s" node was found.', $selector)
+            $message ?: sprintf('The unexpected "%s" node was found.', $selector)
         );
 
         return $this;
