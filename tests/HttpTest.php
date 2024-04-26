@@ -395,7 +395,24 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         });
         
         $http->response()->assertNodeExists('h1', fn (Crawler $n): bool => $n->text() === 'Foo');
-    }    
+    }
+    
+    public function testAssertNodeExistsThrowsExceptionUsingMessage()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('Custom message');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h2>Title</h2></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeExists(selector: 'h1', message: 'Custom message');
+    }
     
     public function testAssertNodeMissing()
     {
@@ -446,7 +463,24 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         });
         
         $http->response()->assertNodeMissing('h1', fn (Crawler $n): bool => $n->text() === 'Title');
-    }    
+    }
+    
+    public function testAssertNodeMissingThrowsExceptionUsingMessage()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('Custom message');
+        
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (RequesterInterface $requester) {
+                return '<!DOCTYPE html><html><body><h1>Title</h1></body></html>';
+            });
+        });
+        
+        $http->response()->assertNodeMissing(selector: 'h1', message: 'Custom message');
+    }
     
     public function testMacro()
     {
