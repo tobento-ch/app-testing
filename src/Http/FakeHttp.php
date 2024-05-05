@@ -55,7 +55,6 @@ final class FakeHttp implements FakerInterface
         
         // Add session factory without using server request:
         $fakeConfig->with('session.factory', \Tobento\App\Testing\Http\SessionFactory::class);
-        //$fakeConfig->with('session.factory', new \Tobento\App\Testing\Http\SessionFactory($session));
         
         $app->on(
             ServerRequestInterface::class,
