@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\Http;
 
 use Tobento\App\Http\ResponseEmitter as DefaultResponseEmitter;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
@@ -26,15 +27,15 @@ class ResponseEmitter extends DefaultResponseEmitter
      * Emit the specified response.
      *
      * @param ResponseInterface $response
-     * @return void
+     * @param ServerRequestInterface $request
+     * @return ResponseInterface
      */
-    public function emit(ResponseInterface $response): void
+    public function emit(ResponseInterface $response, ServerRequestInterface $request): ResponseInterface
     {
         try {
             foreach($this->beforeHandlers as $handler) {
-                $handler($response);
+                $response = $handler($response, $request);
             }
-            
         } catch (Throwable $t) {
             $response = $this->httpErrorHandlers->handleThrowable($t);
             
@@ -42,5 +43,7 @@ class ResponseEmitter extends DefaultResponseEmitter
                 throw $t;
             }
         }
+        
+        return $response;
     }
 }
