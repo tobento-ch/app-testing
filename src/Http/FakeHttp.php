@@ -21,10 +21,15 @@ use Tobento\App\Http\Boot\Http;
 use Tobento\App\Http\Boot\Middleware;
 use Tobento\App\Http\ResponseEmitterInterface;
 use Tobento\App\Http\SessionFactory as DefaultSessionFactory;
-use Tobento\App\Testing\Http\MiddlewareBoot;
+use Tobento\Service\Middleware\MiddlewareFactoryInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Uri\PreviousUri;
+use Tobento\Service\Uri\PreviousUriInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriFactoryInterface;
+use Psr\Http\Message\UriInterface;
+use Stringable;
 
 final class FakeHttp implements FakerInterface
 {
@@ -39,6 +44,8 @@ final class FakeHttp implements FakerInterface
      * @param FakeConfig $fakeConfig
      * @param FileFactory $fileFactory
      * @param TestCase $testCase
+     * @param null|SessionInterface $session
+     * @param array $replaceMiddlewares
      */
     public function __construct(
         private AppInterface $app,
@@ -46,12 +53,27 @@ final class FakeHttp implements FakerInterface
         private FileFactory $fileFactory,
         private TestCase $testCase,
         private null|SessionInterface $session = null,
+        private array $replaceMiddlewares = [],
     ) {
         // Replace response emitter for testing:
         $app->on(ResponseEmitterInterface::class, ResponseEmitter::class);
         
         // Replaces session middleware to ignore session start and save exceptions.
-        $app->on(Middleware::class, MiddlewareBoot::class);
+        $this->app->on(
+            MiddlewareFactoryInterface::class,
+            static function(MiddlewareFactoryInterface $factory) use ($replaceMiddlewares) {
+                $factory->replaceMiddleware(
+                    \Tobento\Service\Session\Middleware\Session::class,
+                    \Tobento\App\Testing\Http\SessionMiddleware::class
+                );
+                
+                $factory->replaceMiddleware(\Tobento\Service\Form\Middleware\VerifyCsrfToken::class, null);
+                
+                foreach($replaceMiddlewares as $mw => $withMw) {
+                    $factory->replaceMiddleware($mw, $withMw);
+                }
+            }
+        );
         
         // Add session factory without using server request:
         $fakeConfig->with('session.factory', \Tobento\App\Testing\Http\SessionFactory::class);
@@ -85,9 +107,14 @@ final class FakeHttp implements FakerInterface
     public function new(AppInterface $app): static
     {
         $session = null;
+        $replaceMiddlewares = [];
         
         if ($this->app->has(SessionInterface::class)) {
             $session = $this->app->get(SessionInterface::class);
+        }
+        
+        if ($this->app->has(MiddlewareFactoryInterface::class)) {
+            $replaceMiddlewares = $this->app->get(MiddlewareFactoryInterface::class)->getReplaceMiddlewares();
         }
 
         return new static(
@@ -96,6 +123,7 @@ final class FakeHttp implements FakerInterface
             fileFactory: $this->fileFactory,
             testCase: $this->testCase,
             session: $session,
+            replaceMiddlewares: $replaceMiddlewares,
         );
     }
 
@@ -191,8 +219,8 @@ final class FakeHttp implements FakerInterface
         if ($this->response) {
             return $this->response;
         }
-
-        $this->app->run();
+        
+        $this->testCase->runApp();
         
         return $this->response = new TestResponse(
             response: $this->app->get(Http::class)->getResponse(),
@@ -229,7 +257,33 @@ final class FakeHttp implements FakerInterface
      */
     public function withoutMiddleware(string ...$middleware): static
     {
-        $this->app->on(Middleware::class, fn ($m) => $m->without(...$middleware));
+        $this->app->on(
+            MiddlewareFactoryInterface::class,
+            static function(MiddlewareFactoryInterface $factory) use ($middleware) {
+                foreach($middleware as $mw) {
+                    $factory->replaceMiddleware($mw, null);
+                }
+            }
+        );
+        
+        return $this;
+    }
+    
+    /**
+     * Set the previous uri.
+     *
+     * @param string|Stringable|UriInterface $uri
+     * @return static $this
+     */
+    public function previousUri(string|Stringable|UriInterface $uri): static
+    {
+        $this->app->on(PreviousUriInterface::class, function() use ($uri) {
+            if ($uri instanceof UriInterface) {
+                return new PreviousUri($uri);
+            }
+            
+            return new PreviousUri($this->app->get(UriFactoryInterface::class)->createUri((string)$uri));
+        })->priority(-1000);
         
         return $this;
     }
