@@ -15,6 +15,7 @@ Testing support for the app.
         - [File Uploads](#file-uploads)
         - [Crawl Response Content](#crawl-response-content)
         - [Response Macros](#response-macros)
+        - [Refresh Session](#refresh-session)
     - [Auth Tests](#auth-tests)
     - [File Storage Tests](#file-storage-tests)
     - [Queue Tests](#queue-tests)
@@ -214,7 +215,7 @@ $http = $this->fakeHttp();
 $http->request(
     method: 'GET',
     uri: 'foo/bar',
-    serverParams: [],
+    server: [],
     query: ['sort' => 'desc'],
     headers: ['Content-type' => 'application/json'],
     cookies: ['token' => 'xxxxxxx'],
@@ -227,7 +228,7 @@ Or you may prefer using methods:
 
 ```php
 $http = $this->fakeHttp();
-$http->request(method: 'GET', uri: 'foo/bar', serverParams: [])
+$http->request(method: 'GET', uri: 'foo/bar', server: [])
     ->query(['sort' => 'desc'])
     ->headers(['Content-type' => 'application/json'])
     ->cookies(['token' => 'xxxxxxx'])
@@ -293,6 +294,34 @@ final class SomeAppTest extends TestCase
         
         // assertions:
         $http->response()->assertStatus(200);
+    }
+}
+```
+
+**previousUri**
+
+You may set a previous uri if your controller uses the previous uri to redirect back if an error occurs for example. 
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->previousUri('users/create');
+        $http->request('POST', 'users');
+        
+        // Or after booting using a named route:
+        $app = $this->bootingApp();
+        $http->previousUri($app->routeUrl('users.create'));
+        
+        // assertions:
+        $http->response()
+            ->assertStatus(301)
+            ->assertLocation(uri: 'users/create');
     }
 }
 ```
@@ -564,6 +593,25 @@ final class SomeAppTest extends TestCase
         
         // assertions:
         $http->response()->assertOk();
+    }
+}
+```
+
+### Refresh Session
+
+You may refresh your session after each test by using ```RefreshSession``` trait:
+
+```php
+use Tobento\App\Testing\TestCase;
+use Tobento\App\Testing\Http\RefreshSession;
+
+final class SomeAppTest extends TestCase
+{
+    use RefreshSession;
+    
+    public function testSomething(): void
+    {
+        // ...
     }
 }
 ```
