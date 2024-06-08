@@ -14,10 +14,12 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\Test;
 
 use Tobento\App\AppInterface;
+use Tobento\App\Http\Middleware\SecurePolicyHeaders;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
 use Tobento\Service\Responser\ResponserInterface;
 use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Uri\PreviousUriInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
@@ -39,7 +41,7 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         
             $router->get('article', function () {
                 return 'article';
-            });
+            })->name('article')->middleware(SecurePolicyHeaders::class);
             
             $router->get('session-flash', function (ServerRequestInterface $request) {
                 $session = $request->getAttribute(SessionInterface::class);
@@ -50,8 +52,19 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
             $router->get('session-flashed', function (ServerRequestInterface $request) {
                 $session = $request->getAttribute(SessionInterface::class);
                 return $session->get('key', '');
-            });      
+            });
         });
+        
+        return $app;
+    }
+    
+    public function bootingApp(): AppInterface
+    {
+        $app = $this->getApp()->booting();
+        $app->set('isBootingAppCalled', true);
+        $app->get(RouterInterface::class)->get('route-booting', function () {
+            return 'route-booting';
+        })->name('route-booting');
         
         return $app;
     }
@@ -78,6 +91,48 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         $http->followRedirects()->assertStatus(200)->assertBodySame('article');
     }
     
+    public function testFollowingRedirectsKeepsWithoutMiddleware()
+    {
+        $http = $this->fakeHttp();
+        $http->withoutMiddleware(SecurePolicyHeaders::class);
+        $http->request(method: 'GET', uri: 'redirects-to-article');
+        
+        $http->response()->assertStatus(302);
+        $http->followRedirects()
+            ->assertStatus(200)
+            ->assertBodySame('article')
+            ->assertHeaderMissing('Strict-Transport-Security');
+    }
+    
+    public function testFollowingRedirectsPreviousUri()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'redirects-to-prev-uri');
+
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
+                return (string)$previousUri;
+            });
+        });
+        
+        $app = $this->bootingApp();
+        $http->previousUri($app->routeUrl('article'));
+        
+        $http->followRedirects()
+            ->assertStatus(200)
+            ->assertBodySame('article');
+    }
+    
+    public function testFollowingRedirectsIsBootingAppMethodCalled()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'redirects-to-article');
+        $http->response()->assertStatus(302);
+        $http->followRedirects()->assertStatus(200)->assertBodySame('article');
+        
+        $this->assertTrue($this->getApp()->has('isBootingAppCalled'));
+    }
+    
     public function testSubrequest()
     {
         $http = $this->fakeHttp();
@@ -99,5 +154,29 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         
         $http->request(method: 'GET', uri: 'session-flashed');
         $http->response()->assertStatus(200)->assertSessionMissing('key')->assertBodySame('');   
-    }    
+    }
+    
+    public function testSubrequestKeepsWithoutMiddleware()
+    {
+        $http = $this->fakeHttp();
+        $http->withoutMiddleware(SecurePolicyHeaders::class);
+        $http->request(method: 'GET', uri: 'article');
+        $http->response()->assertStatus(200)->assertBodySame('article')->assertHeaderMissing('Strict-Transport-Security');
+        
+        $http->request(method: 'GET', uri: 'redirects-to-article');
+        $http->response()->assertStatus(302)->assertHeaderMissing('Strict-Transport-Security');
+    }
+    
+    public function testSubrequestIsBootingAppMethodCalled()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'article');
+        
+        $http->response()->assertStatus(200)->assertBodySame('article');
+        
+        $http->request(method: 'GET', uri: 'route-booting');
+        $http->response()->assertStatus(200)->assertBodySame('route-booting');
+        
+        $this->assertTrue($this->getApp()->has('isBootingAppCalled'));
+    }
 }

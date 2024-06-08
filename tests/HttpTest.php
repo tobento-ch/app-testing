@@ -15,13 +15,16 @@ namespace Tobento\App\Testing\Test;
 
 use PHPUnit\Framework\ExpectationFailedException;
 use Tobento\App\AppInterface;
+use Tobento\App\Http\Middleware\SecurePolicyHeaders;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Requester\RequesterInterface;
 use Tobento\Service\Responser\ResponserInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Cookie\CookieValuesInterface;
 use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Uri\PreviousUriInterface;
 use Symfony\Component\DomCrawler\Crawler;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriFactoryInterface;
 
 class HttpTest extends \Tobento\App\Testing\TestCase
 {
@@ -246,6 +249,74 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             ->assertHasSession('key')
             ->assertHasSession('key', 'value')
             ->assertSessionMissing('foo');
+    }
+    
+    public function testRequestWithoutMiddleware()
+    {
+        $http = $this->fakeHttp();
+        $http->withoutMiddleware(SecurePolicyHeaders::class);
+        $http->request(method: 'GET', uri: 'blog');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function (ServerRequestInterface $request) {
+                return $request->getHeaderLine('X-Requested-With');
+            })->middleware(SecurePolicyHeaders::class);
+        });
+        
+        $http->response()->assertHeaderMissing('Strict-Transport-Security');
+    }
+    
+    public function testPreviousUri()
+    {
+        $http = $this->fakeHttp();
+        $http->previousUri('prev-uri');
+        $http->request(method: 'POST', uri: 'redirects-to-prev-uri');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router, AppInterface $app): void {
+            $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
+                return (string)$previousUri;
+            });
+        });
+        
+        $http->response()->assertBodySame('prev-uri');
+    }
+    
+    public function testPreviousUriUsingUri()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'redirects-to-prev-uri');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router, AppInterface $app): void {
+            $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
+                return (string)$previousUri;
+            });
+        });
+        
+        $app = $this->bootingApp();
+        $http->previousUri($app->get(UriFactoryInterface::class)->createUri('prev-uri'));
+        
+        $http->response()->assertBodySame('prev-uri');
+    }
+    
+    public function testPreviousUriUsingRouteUrl()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'redirects-to-prev-uri');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router, AppInterface $app): void {
+            $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
+                return (string)$previousUri;
+            });
+            
+            $router->post('foo', function () {
+                return 'foo';
+            })->name('foo');
+        });
+        
+        $app = $this->bootingApp();
+        $http->previousUri($app->routeUrl('foo'));
+        
+        $http->response()->assertBodySame('foo');
     }
     
     public function testAssertLocation()
