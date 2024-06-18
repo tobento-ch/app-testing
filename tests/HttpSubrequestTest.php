@@ -133,6 +133,17 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         $this->assertTrue($this->getApp()->has('isBootingAppCalled'));
     }
     
+    public function testFollowingRedirectsKeepsServerParams()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'redirects-to-article', server: ['REMOTE_ADDR' => 'addr']);
+        
+        $http->followRedirects()->assertStatus(200);
+        
+        $request = $http->request(method: 'GET', uri: 'redirects-to-article');
+        $this->assertSame(['REMOTE_ADDR' => 'addr'], $request->getRequest()->getServerParams());
+    }
+    
     public function testSubrequest()
     {
         $http = $this->fakeHttp();
@@ -178,5 +189,18 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         $http->response()->assertStatus(200)->assertBodySame('route-booting');
         
         $this->assertTrue($this->getApp()->has('isBootingAppCalled'));
+    }
+    
+    public function testSubrequestKeepsAndOverwritesServerParams()
+    {
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'article', server: ['REMOTE_ADDR' => 'addr']);
+        $http->response()->assertStatus(200)->assertBodySame('article');
+        
+        $request = $http->request(method: 'GET', uri: 'article', server: ['REMOTE_ADDR' => 'addr']);
+        $this->assertSame(['REMOTE_ADDR' => 'addr'], $request->getRequest()->getServerParams());
+        
+        $request = $http->request(method: 'GET', uri: 'article', server: ['REMOTE_ADDR' => 'addr-new']);
+        $this->assertSame(['REMOTE_ADDR' => 'addr-new'], $request->getRequest()->getServerParams());
     }
 }
