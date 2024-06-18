@@ -165,6 +165,8 @@ final class FakeHttp implements FakerInterface
                 $cookies = array_merge($previousResponse->cookies(), is_array($cookies) ? $cookies : []);
             }
             
+            $server = array_merge($this->request->getRequest()->getServerParams(), $server);
+            
             return $http->request(
                 method: $method,
                 uri: $uri,
