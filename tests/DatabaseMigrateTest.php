@@ -25,6 +25,7 @@ class DatabaseMigrateTest extends \Tobento\App\Testing\TestCase
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
         $app->boot(\Tobento\App\User\Boot\User::class);
+        $app->boot(\Tobento\App\View\Boot\View::class);
         return $app;
     }
 
