@@ -92,6 +92,7 @@ abstract class TestCase extends BaseTestCase
         $app->dirs()
             ->dir($rootDir, 'root')
             ->dir($appDir, 'app')
+            ->dir($app->dir('app').'apps/', name: 'apps')
             ->dir($app->dir('app').'config', 'config', group: 'config', priority: 10)
             ->dir($app->dir('root').'vendor', 'vendor')
             // for testing only we add public within app dir.
