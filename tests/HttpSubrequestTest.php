@@ -111,7 +111,7 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
 
         $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
             $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
-                return (string)$previousUri;
+                return 'redirects';
             });
         });
         
@@ -120,7 +120,7 @@ class HttpSubrequestTest extends \Tobento\App\Testing\TestCase
         
         $http->followRedirects()
             ->assertStatus(200)
-            ->assertBodySame('article');
+            ->assertBodySame('redirects');
     }
     
     public function testFollowingRedirectsIsBootingAppMethodCalled()

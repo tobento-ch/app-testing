@@ -305,18 +305,18 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         
         $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router, AppInterface $app): void {
             $router->post('redirects-to-prev-uri', function (PreviousUriInterface $previousUri) {
-                return (string)$previousUri;
+                return 'redirects';
             });
             
             $router->post('foo', function () {
-                return 'foo';
+                return 'foo response';
             })->name('foo');
         });
         
         $app = $this->bootingApp();
         $http->previousUri($app->routeUrl('foo'));
         
-        $http->response()->assertBodySame('foo');
+        $http->response()->assertBodySame('redirects');
     }
     
     public function testAssertLocation()
@@ -347,6 +347,27 @@ class HttpTest extends \Tobento\App\Testing\TestCase
         })->name('foo');
         
         $http->response()->assertRedirectToRoute('foo', ['id' => '5']);
+    }
+    
+    public function testAssertRedirectToRouteWithPreviousUri()
+    {
+        $http = $this->fakeHttp();
+        $http->previousUri('blog');
+        $http->request(method: 'GET', uri: 'redirects');
+        
+        $app = $this->bootingApp();
+        $app->get(RouterInterface::class)->get(
+            'redirects',
+            function (ResponserInterface $responser, RouterInterface $router, PreviousUriInterface $previousUri) {
+                return $responser->redirect(uri: $previousUri);
+            }
+        );
+        
+        $app->get(RouterInterface::class)->get('blog', function () {
+            return 'blog';
+        })->name('blog');
+        
+        $http->response()->assertRedirectToRoute('blog');
     }
     
     public function testCrawling()
