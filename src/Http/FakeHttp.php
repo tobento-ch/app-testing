@@ -225,6 +225,7 @@ final class FakeHttp implements FakerInterface
         $this->testCase->runApp();
         
         return $this->response = new TestResponse(
+            request: $this->request,
             response: $this->app->get(Http::class)->getResponse(),
             session: $this->app->has(SessionInterface::class) ? $this->app->get(SessionInterface::class) : null,
             router: $this->app->has(RouterInterface::class) ? $this->app->get(RouterInterface::class) : null,
