@@ -13,14 +13,15 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Http;
 
+use Closure;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
-use Tobento\Service\Session\SessionInterface;
-use Tobento\Service\Routing\RouterInterface;
-use Tobento\Service\Macro\Macroable;
-use Symfony\Component\DomCrawler\Crawler;
 use Stringable;
-use Closure;
+use Symfony\Component\DomCrawler\Crawler;
+use Tobento\Service\Macro\Macroable;
+use Tobento\Service\Routing\RouterInterface;
+use Tobento\Service\Session\SessionInterface;
 
 /**
  * TestResponse
@@ -39,9 +40,13 @@ class TestResponse implements Stringable
     /**
      * Create a new instance.
      *
+     * @param Request $request
      * @param ResponseInterface $response
+     * @param null|SessionInterface $session
+     * @param null|RouterInterface $router
      */
     public function __construct(
+        protected Request $request,
         protected ResponseInterface $response,
         protected null|SessionInterface $session = null,
         protected null|RouterInterface $router = null,
@@ -410,7 +415,21 @@ class TestResponse implements Stringable
             'Response is not a redirection.'
         );
         
-        $this->assertLocation((string)$this->router->url($name, $parameters));
+        // adjust uri if a relative request uri was set:
+        $location = (string)$this->router->url($name, $parameters);
+        $uri = $this->request->getRequest()->getUri();
+        $isRelative = empty($uri->getScheme()) && empty($uri->getAuthority());
+        
+        if ($isRelative) {
+            $locUri = (new Psr17Factory())->createUri($location);
+            $location = $uri
+                ->withPath($locUri->getPath())
+                ->withQuery($locUri->getQuery())
+                ->withFragment($locUri->getFragment());
+            $location = ltrim((string)$location, '/');
+        }
+        
+        $this->assertLocation($location);
 
         return $this;
     }
@@ -423,7 +442,21 @@ class TestResponse implements Stringable
      */
     public function assertLocation(string $uri)
     {
-        $this->assertHasHeader('Location', $uri);
+        $uriFactory = new Psr17Factory();
+        $uri = $uriFactory->createUri($uri);
+        $isRelative = empty($uri->getScheme()) && empty($uri->getAuthority());
+        
+        if ($isRelative) {
+            $headerLocation = $this->response->getHeaderLine('Location');
+            
+            if (is_string($headerLocation)) {
+                $uri = $uriFactory
+                    ->createUri($headerLocation)
+                    ->withPath($uri->getPath());
+            }
+        }
+        
+        $this->assertHasHeader('Location', (string)$uri);
         
         return $this;
     }
