@@ -326,6 +326,35 @@ final class SomeAppTest extends TestCase
 }
 ```
 
+**Http Url**
+
+You may sometimes wish to modify the http url in order to have relative urls for instance;
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $config = $this->fakeConfig();
+        $config->with('http.url', ''); // modify
+        
+        $http = $this->fakeHttp();
+        $http->request('GET', 'orders');
+        
+        // assertions:
+        $http->response()
+            // if modified:
+            ->assertNodeExists('a[href="orders/5"]')
+            
+            // if not modified:
+            ->assertNodeExists('a[href="http://localhost/orders/5"]');
+    }
+}
+```
+        
 ### Subsequent Requests
 
 After making a request, subsequent requests will create a new app. Any fakers from the first request will be rebooted.
