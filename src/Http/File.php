@@ -30,6 +30,11 @@ class File extends UploadedFile
      * The fake file size
      */
     public null|string $fakeMimeType = null;
+    
+    /**
+     * The fake error
+     */
+    public null|int $fakeError = null;
 
     /**
      * Create a new file instance
@@ -60,17 +65,28 @@ class File extends UploadedFile
     /**
      * Set the fake size of the file in kilobytes.
      */
-    public function setSize(int $kilobytes): void
+    public function setSize(int $kilobytes): static
     {
         $this->fakeSize = $kilobytes * 1024;
+        return $this;
     }
 
     /**
      * Set the fake MIME type for the file.
      */
-    public function setMimeType(string $mimeType): void
+    public function setMimeType(string $mimeType): static
     {
         $this->fakeMimeType = $mimeType;
+        return $this;
+    }
+    
+    /**
+     * Set the fake Error for the file.
+     */
+    public function setError(int $error): static
+    {
+        $this->fakeError = $error;
+        return $this;
     }
 
     /**
@@ -101,6 +117,21 @@ class File extends UploadedFile
         }
 
         return parent::getSize();
+    }
+    
+    /**
+     * Returns the error.
+     *
+     * @psalm-suppress MethodSignatureMismatch
+     * @psalm-suppress MissingImmutableAnnotation
+     */
+    public function getError(): int
+    {
+        if ($this->fakeError !== null) {
+            return $this->fakeError;
+        }
+
+        return parent::getError();
     }
 
     /**
