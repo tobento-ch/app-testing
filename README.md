@@ -14,6 +14,7 @@ Testing support for the app.
         - [Subsequent Requests](#subsequent-requests)
         - [File Uploads](#file-uploads)
         - [Crawl Response Content](#crawl-response-content)
+        - [Json Response](#json-response)
         - [Response Macros](#response-macros)
         - [Refresh Session](#refresh-session)
     - [Auth Tests](#auth-tests)
@@ -25,6 +26,7 @@ Testing support for the app.
     - [Database Tests](#database-tests)
         - [Reset Databases](#reset-databases)
         - [Replace Databases](#replace-databases)
+    - [Logging Tests](#logging-tests)
 - [Credits](#credits)
 ___
 
@@ -590,6 +592,126 @@ final class SomeAppTest extends TestCase
         $this->assertSame('POST', $form->getMethod());
     }
 }
+```
+
+### JSON Response
+
+You may test JSON responses using the ```assertJson``` method.
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'api/user/1');
+        
+        // assertions:
+        $http->response()
+            ->assertStatus(200)
+            ->assertJson([
+                'id' => 1,
+                'name' => 'John',
+            ]);
+    }
+}
+```
+
+#### Assertable Json
+
+You may use the ```AssertableJson``` class to fluently test JSON responses.
+
+```php
+use Tobento\App\Testing\TestCase;
+use Tobento\App\Testing\Http\AssertableJson;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'api/users');
+        
+        // assertions:
+        $http->response()
+            ->assertJson(fn (AssertableJson $json) =>
+                $json->has(items: 3)
+                     ->has(key: '0', items: 2, value: AssertableJson $json) =>
+                        $json->has(key: 'id', value: 1)
+                             ->has(key: 'name', value: 'Tom')
+                     )
+            );
+    }
+}
+```
+
+**Assert Key**
+
+Assert that the key exists:
+
+```php
+$json->has(key: 'name');
+
+// using dot notation:
+$json->has(key: 'address.firstname');
+```
+
+**Assert Value**
+
+Assert that the value matches:
+
+```php
+$json->has(value: ['name' => 'Tom']);
+```
+
+**Assert Key And Value**
+
+Assert that the value matches the key value:
+
+```php
+$json->has(key: 'name', value: 'Tom');
+$json->has(key: 'address.firstname', value: 'John');
+```
+
+**Assert Items**
+
+Asserts that the items count matches.
+
+```php
+$json->has(items: 3);
+
+// with key
+$json->has(key: 'colors', items: 3);
+```
+
+**Assert Passes**
+
+Asserts that passes evaluates to true.
+
+```php
+$json->has(passes: true);
+$json->has(passes: false); // will fail
+
+// with key
+$json->has(key: 'color', passes: fn (mixed $color) => is_string($color));
+```
+
+**Hasnt**
+
+Use the ```hasnt``` method asserting the opposite of the ```has``` method.
+
+```php
+$json->hasnt(key: 'name');
+$json->hasnt(key: 'address.firstname');
+$json->hasnt(value: ['name' => 'Tom']);
+$json->hasnt(key: 'address.firstname', value: 'John');
+$json->hasnt(items: 3);
+$json->hasnt(key: 'colors', items: 3);
+$json->hasnt(value: 'name', passes: fn (mixed $color) => is_string($color));
 ```
 
 ### Response Macros
@@ -1271,6 +1393,72 @@ final class SomeAppTest extends TestCase
     public function testSomething(): void
     {
         // ...
+    }
+}
+```
+
+## Logging Tests
+
+If you have installed the [App Logging](https://github.com/tobento-ch/app-logging) bundle you may test your application using the ```fakeLogging``` method which allows you to create a fake logger to prevent logging with the actual logger.
+
+Example using a tmp app:
+
+```php
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
+use Tobento\App\AppInterface;
+use Tobento\App\Testing\Logging\LogEntry;
+use Tobento\Service\Routing\RouterInterface;
+
+class LoggingTest extends \Tobento\App\Testing\TestCase
+{
+    public function createApp(): AppInterface
+    {
+        $app = $this->createTmpApp(rootDir: __DIR__.'/..');
+        $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Logging\Boot\Logging::class);
+        
+        // routes: just for demo, normally done with a boot!
+        $app->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('login', function (ServerRequestInterface $request, LoggerInterface $logger) {    
+                
+                $logger->info('User logged in.', ['user_id' => 3]);
+                
+                return 'response';
+            });
+        });
+        
+        return $app;
+    }
+
+    public function testIsLogged()
+    {
+        // fakes:
+        $fakeLogging = $this->fakeLogging();
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'login');
+        
+        // run the app:
+        $this->runApp();
+        
+        // assertions using default logger:
+        $fakeLogging->logger()
+            ->assertLogged(fn (LogEntry $log): bool =>
+                $log->level === 'info'
+                && $log->message === 'User logged in.' 
+                && $log->context === ['user_id' => 3]
+            )
+            ->assertNotLogged(
+                fn (LogEntry $log): bool => $log->level === 'error'
+            )
+            ->assertLoggedTimes(
+                fn (LogEntry $log): bool => $log->level === 'info',
+                1
+            );
+        
+        // specific logger:
+        $fakeLogging->logger(name: 'error')
+            ->assertNothingLogged();
     }
 }
 ```
