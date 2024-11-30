@@ -72,7 +72,7 @@ final class FakeQueue implements FakerInterface
      * @param string $name
      * @return QueueInterface
      */
-    public function queue(string $name = null): QueueInterface
+    public function queue(string $name): QueueInterface
     {
         return $this->app->get(QueuesInterface::class)->queue($name);
     }
