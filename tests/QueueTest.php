@@ -21,6 +21,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\JobInterface;
 use Tobento\Service\Queue\Job;
+use Tobento\Service\Queue\JobSkipException;
 
 class QueueTest extends \Tobento\App\Testing\TestCase
 {
@@ -174,5 +175,29 @@ class QueueTest extends \Tobento\App\Testing\TestCase
         
         $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
         $this->fakeQueue()->queue(name: 'sync')->assertPushed('bar');
+    }
+    
+    public function testSkippedJobsAreNotPushed()
+    {
+        $fakeQueue = $this->fakeQueue();
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'queue');
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('queue', function (ServerRequestInterface $request, QueueInterface $queue) {
+                
+                $queue->push((new Job(
+                    name: 'sample',
+                    payload: ['key' => 'value'],
+                ))->pushing(handler: function() {
+                    throw new JobSkipException();
+                }));
+                
+                return 'response';
+            });
+        });
+        
+        $this->runApp();
+        $fakeQueue->queue(name: 'sync')->assertNotPushed('sample');
     }
 }
