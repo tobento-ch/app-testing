@@ -222,6 +222,30 @@ class TestResponse implements Stringable
     }
     
     /**
+     * Asserts if the response body is the same as the specified body.
+     *
+     * @param array|Closure $value
+     * @return static
+     */
+    public function assertJson(array|Closure $value): static
+    {
+        try {
+            $data = json_decode((string)$this->response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            TestCase::fail('Invalid json response.');
+            return $this;
+        }
+        
+        if (!is_array($value)) {
+            $value(new AssertableJson($data));
+            return $this;
+        }
+        
+        (new AssertableJson($data))->has(value: $value);
+        return $this;
+    }
+    
+    /**
      * Asserts if the response is the same as the specified content type.
      *
      * @param string $contentType The content type such as 'application/json'
