@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\JobInterface;
 use Tobento\Service\Queue\JobProcessorInterface;
+use Tobento\Service\Queue\JobSkipException;
 use Closure;
 
 final class TestQueue implements QueueInterface
@@ -72,7 +73,11 @@ final class TestQueue implements QueueInterface
      */
     public function push(JobInterface $job): string
     {
-        $job = $this->jobProcessor->processPushingJob($job, $this);
+        try {
+            $job = $this->jobProcessor->processPushingJob($job, $this);
+        } catch (JobSkipException $e) {
+            return $job->getId();
+        }
         
         $this->jobs[$job->getName()][$job->getId()] = $job;
         
