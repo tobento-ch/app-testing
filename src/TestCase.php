@@ -29,6 +29,7 @@ abstract class TestCase extends BaseTestCase
     use Traits\InteractsWithEvent;
     use Traits\InteractsWithMail;
     use Traits\InteractsWithNotifier;
+    use Traits\InteractsWithLogging;
     
     public const CREATE_APP_ON_SETUP = true;
 
