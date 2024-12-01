@@ -59,7 +59,8 @@
         "psr-4": {
             "Tobento\\App\\Testing\\Test\\": "tests",
             "Tobento\\App\\Event\\Test\\": "vendor/tobento/app-event/tests",
-            "Tobento\\Service\\Event\\Test\\": "vendor/tobento/service-event/tests"
+            "Tobento\\Service\\Event\\Test\\": "vendor/tobento/service-event/tests",
+            "Tobento\\Service\\Queue\\Test\\": "vendor/tobento/service-queue/tests"
         }
     },
     "scripts": {
