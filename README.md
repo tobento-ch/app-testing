@@ -1066,6 +1066,26 @@ class QueueTest extends \Tobento\App\Testing\TestCase
 }
 ```
 
+**Clear Queue**
+
+Sometimes it may be useful to clear the queue using the ```clearQueue``` method:
+
+```php
+use Tobento\Service\Queue\QueueInterface;
+
+$fakeQueue->clearQueue(
+    queue: $fakeQueue->queue(name: 'file') // QueueInterface
+);
+```
+
+**Run Jobs**
+
+Sometimes it may be useful to run jobs using the ```runJobs``` method:
+
+```php
+$fakeQueue->runJobs($fakeQueue->queue(name: 'sync')->getAllJobs());
+```
+
 ## Event Tests
 
 If you have installed the [App Event](https://github.com/tobento-ch/app-event) bundle you may test your application using the ```fakeEvents``` method which records all events that are dispatched and provides assertion methods that you can use to check if specific events were dispatched and how many times. Currently, only [Default Events](https://github.com/tobento-ch/app-event#default-events) will be recorded. [Specific Events](https://github.com/tobento-ch/app-event#specific-events) are not supported yet.
