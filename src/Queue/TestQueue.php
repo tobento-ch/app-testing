@@ -119,7 +119,7 @@ final class TestQueue implements QueueInterface
      */
     public function getAllJobs(): iterable
     {
-        return array_merge(...$this->jobs);
+        return array_merge(...array_values($this->jobs));
     }
     
     /**
@@ -129,7 +129,7 @@ final class TestQueue implements QueueInterface
      */
     public function size(): int
     {
-        return count(array_merge(...$this->jobs));
+        return count($this->jobs);
     }
     
     /**
