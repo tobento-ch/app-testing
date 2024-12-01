@@ -22,6 +22,7 @@ use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\JobInterface;
 use Tobento\Service\Queue\Job;
 use Tobento\Service\Queue\JobSkipException;
+use Tobento\Service\Queue\Test\Mock\CallableJob;
 
 class QueueTest extends \Tobento\App\Testing\TestCase
 {
@@ -199,5 +200,36 @@ class QueueTest extends \Tobento\App\Testing\TestCase
         
         $this->runApp();
         $fakeQueue->queue(name: 'sync')->assertNotPushed('sample');
+    }
+    
+    public function testRunJobsMethod()
+    {
+        $fakeQueue = $this->fakeQueue();
+        $app = $this->bootingApp();
+        $queue = $app->get(QueueInterface::class);
+        $queue->push(new CallableJob(id: 'foo'));
+        
+        $fakeQueue->queue(name: 'sync')->assertPushed(CallableJob::class);
+        
+        $jobs = $fakeQueue->runJobs($fakeQueue->queue(name: 'sync')->getAllJobs());
+        
+        $this->assertSame(1, count($jobs));
+    }
+    
+    public function testClearQueueMethod()
+    {
+        $fakeQueue = $this->fakeQueue();
+        $app = $this->bootingApp();
+        $queue = $app->get(QueueInterface::class);
+        $queue->push(new CallableJob(id: 'foo'));
+        
+        $fakeQueue->queue(name: 'sync')->assertPushed(CallableJob::class);
+        
+        $cleared = $fakeQueue->clearQueue($fakeQueue->queue(name: 'sync'));
+        
+        $this->assertTrue($cleared);
+        $fakeQueue->queue(name: 'sync')
+            ->assertNotPushed(CallableJob::class)
+            ->assertNothingPushed();
     }
 }
