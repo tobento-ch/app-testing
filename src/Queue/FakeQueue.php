@@ -15,10 +15,13 @@ namespace Tobento\App\Testing\Queue;
 
 use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
-use Tobento\Service\Queue\QueuesInterface;
-use Tobento\Service\Queue\QueueInterface;
+use Tobento\Service\Console\ConsoleInterface;
+use Tobento\Service\Queue\Console\ClearCommand;
+use Tobento\Service\Queue\JobInterface;
 use Tobento\Service\Queue\JobProcessorInterface;
+use Tobento\Service\Queue\QueueInterface;
 use Tobento\Service\Queue\Queues;
+use Tobento\Service\Queue\QueuesInterface;
 
 final class FakeQueue implements FakerInterface
 {
@@ -75,6 +78,43 @@ final class FakeQueue implements FakerInterface
     public function queue(string $name): QueueInterface
     {
         return $this->app->get(QueuesInterface::class)->queue($name);
+    }
+    
+    /**
+     * Runs the given jobs.
+     *
+     * @param iterable<JobInterface> $jobs
+     * @return array<array-key, JobInterface> The processed jobs.
+     */
+    public function runJobs(iterable $jobs): array
+    {
+        $jobProcessor = $this->app->get(JobProcessorInterface::class);
+        $processed = [];
+        
+        foreach($jobs as $job) {
+            $jobProcessor->processJob($job);
+            $processed[] = $jobProcessor->afterProcessJob($job);
+        }
+        
+        return $processed;
+    }
+    
+    /**
+     * Clear the given queue.
+     *
+     * @param QueueInterface $queue
+     * @return bool True on success, otherwise false.
+     */
+    public function clearQueue(QueueInterface $queue): bool
+    {
+        $console = $this->app->get(ConsoleInterface::class);
+
+        $executed = $console->execute(
+            command: ClearCommand::class,
+            input: ['--queue' => [$queue->name()]],
+        );
+        
+        return $executed->code() === 0 ? true : false;
     }
     
     /**
