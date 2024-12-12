@@ -900,14 +900,18 @@ If you have installed the [App File Storage](https://github.com/tobento-ch/app-f
 Example using a tmp app:
 
 ```php
-use Tobento\App\AppInterface;
-use Tobento\Service\Routing\RouterInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tobento\App\AppInterface;
+use Tobento\App\Testing\FileStorage\RefreshFileStorages;
 use Tobento\Service\FileStorage\StoragesInterface;
 use Tobento\Service\FileStorage\Visibility;
+use Tobento\Service\Routing\RouterInterface;
 
 class FileStorageTest extends \Tobento\App\Testing\TestCase
 {
+    // you may refresh all file storages after each test.
+    use RefreshFileStorages;
+    
     public function createApp(): AppInterface
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
