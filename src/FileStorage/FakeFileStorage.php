@@ -19,7 +19,6 @@ use Tobento\Service\FileStorage\StoragesInterface;
 use Tobento\Service\FileStorage\StorageInterface;
 use Tobento\Service\FileStorage\Storages;
 use Tobento\Service\FileStorage\Flysystem;
-use Tobento\Service\Filesystem\Dir;
 use Nyholm\Psr7\Factory\Psr17Factory;
 
 final class FakeFileStorage implements FakerInterface
@@ -37,8 +36,6 @@ final class FakeFileStorage implements FakerInterface
             function(StoragesInterface $storages): StoragesInterface {
                 
                 $rootDir = $this->app->dir('app').'storage/testing/file-storage/';
-                
-                (new Dir())->delete($rootDir);
                 
                 $fakeStorages = new Storages();
                 
