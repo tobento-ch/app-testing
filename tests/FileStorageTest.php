@@ -13,15 +13,18 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Test;
 
-use Tobento\App\AppInterface;
-use Tobento\Service\Routing\RouterInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tobento\App\AppInterface;
+use Tobento\App\Testing\FileStorage\RefreshFileStorages;
 use Tobento\Service\Responser\ResponserInterface;
+use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\FileStorage\StoragesInterface;
 use Tobento\Service\FileStorage\Visibility;
 
 class FileStorageTest extends \Tobento\App\Testing\TestCase
 {
+    use RefreshFileStorages;
+    
     public function createApp(): AppInterface
     {
         $app = $this->createTmpApp(rootDir: __DIR__.'/..');
@@ -110,5 +113,24 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
         
         $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
         $this->fakeFileStorage()->storage(name: 'uploads')->assertCreated('bar.txt');
+    }
+    
+    public function testMultipleRequestsKeepsFiles()
+    {
+        $fileStorage = $this->fakeFileStorage();
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'foo');
+        
+        $this->bootingApp();
+        $fileStorage->storage(name: 'uploads')->write(path: 'bar.txt', content: 'content');
+        
+        $http->response()->assertStatus(302);
+        $fileStorage->storage(name: 'uploads')->assertCreated('foo.txt');
+        $this->assertSame(2, count($fileStorage->storage(name: 'uploads')->files(path: '')->all()));
+        
+        $http->request(method: 'GET', uri: 'foo');
+        $http->response()->assertStatus(302);
+        
+        $this->assertSame(2, count($fileStorage->storage(name: 'uploads')->files(path: '')->all()));
     }
 }
