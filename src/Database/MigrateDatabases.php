@@ -30,22 +30,27 @@ trait MigrateDatabases
         $app = $this->getApp();
         $migrator = $app->get(MigratorInterface::class);
         $migrationFactory = $app->get(MigrationFactoryInterface::class);
+        $migrations = [];
         
+        // first uninstall:
         foreach($migrator->getInstalled() as $migration) {
             try {
                 $migration = $migrationFactory->createMigration($migration);
             } catch (\Throwable $e) {
                 continue;
             }
+            
+            $migrations[] = $migration;
 
-            // first uninstall
             foreach($migration->uninstall()->all() as $action) {
                 if ($action->type() === 'database') {
                     $action->process();
                 }
             }
-            
-            // first install
+        }
+        
+        // finally install:
+        foreach($migrations as $migration) {
             foreach($migration->install()->all() as $action) {
                 if ($action->type() === 'database') {
                     $action->process();
