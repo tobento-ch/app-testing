@@ -285,8 +285,8 @@ class AssertableJson
         }
         
         $message = $path === ''
-            ? sprintf('Json object does have %d item(s).', $items, count($data))
-            : sprintf('Json property [%s] does have %d item(s).', $path, $items, count($data));
+            ? sprintf('Json object does have %d item(s).', $items)
+            : sprintf('Json property [%s] does have %d item(s).', $path, $items);
         
         TestCase::assertFalse(count($data) === $items, $message);
     }
