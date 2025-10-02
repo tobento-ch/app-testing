@@ -44,9 +44,10 @@ class File extends UploadedFile
      * @psalm-suppress MethodSignatureMismatch
      * @psalm-suppress MoreSpecificImplementedParamType
      * @psalm-suppress ConstructorSignatureMismatch
+     * @psalm-suppress ParamNameMismatch
      */
     public function __construct(
-        private string $filename,
+        string $filename,
         private $tempFile
     ) {
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
