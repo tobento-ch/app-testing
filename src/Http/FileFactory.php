@@ -20,10 +20,10 @@ final class FileFactory
      *
      * @param string $filename
      * @param null|int $kilobytes
-     * @param string $mimeType
+     * @param null|string $mimeType
      * @return File
      */
-    public function createFile(string $filename, null|int $kilobytes = null, string $mimeType = null): File
+    public function createFile(string $filename, null|int $kilobytes = null, null|string $mimeType = null): File
     {
         $file = new File($filename, tmpfile());
 
@@ -43,10 +43,10 @@ final class FileFactory
      *
      * @param string $filename
      * @param string $content
-     * @param string $mimeType
+     * @param null|string $mimeType
      * @return File
      */
-    public function createFileWithContent(string $filename, string $content, string $mimeType = null): File
+    public function createFileWithContent(string $filename, string $content, null|string $mimeType = null): File
     {
         $tmpFile = tmpfile();
         fwrite($tmpFile, $content);
