@@ -248,7 +248,7 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             ->assertStatus(200)
             ->assertHasSession('key')
             ->assertHasSession('key', 'value')
-            ->assertSessionMissing('foo');
+            ->assertSessionMissing('baz');
     }
     
     public function testRequestWithoutMiddleware()
