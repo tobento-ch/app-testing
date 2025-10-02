@@ -28,11 +28,6 @@ final class TestQueue implements QueueInterface
     private array $jobs = [];
     
     /**
-     * @var array
-     */
-    private array $jobsByName = [];
-    
-    /**
      * Create a new TestQueue.
      *
      * @param string $name
@@ -158,7 +153,7 @@ final class TestQueue implements QueueInterface
         });
     }
     
-    public function assertPushed(string $name, Closure $callback = null): static
+    public function assertPushed(string $name, null|Closure $callback = null): static
     {
         $jobs = $this->filterJobs($name, $callback);
 
