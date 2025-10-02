@@ -78,8 +78,7 @@ class TestResponse implements Stringable
             TestCase::fail('The HTTP response is empty.');
         }
         
-        // pass in new version $useHtml5Parser
-        return new Crawler($content, $uri, $baseHref);
+        return new Crawler($content, $uri, $baseHref, $useHtml5Parser);
     }
     
     /**
@@ -473,11 +472,9 @@ class TestResponse implements Stringable
         if ($isRelative) {
             $headerLocation = $this->response->getHeaderLine('Location');
             
-            if (is_string($headerLocation)) {
-                $uri = $uriFactory
-                    ->createUri($headerLocation)
-                    ->withPath($uri->getPath());
-            }
+            $uri = $uriFactory
+                ->createUri($headerLocation)
+                ->withPath($uri->getPath());
         }
         
         $this->assertHasHeader('Location', (string)$uri);
