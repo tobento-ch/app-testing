@@ -40,7 +40,7 @@ composer require tobento/app-testing
 
 ## Requirements
 
-- PHP 8.0 or greater
+- PHP 8.4 or greater
 
 # Documentation
 
@@ -1183,7 +1183,7 @@ class MailTest extends \Tobento\App\Testing\TestCase
         $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
             $router->post('mail', function (ServerRequestInterface $request, MailerInterface $mailer) {
                 
-                $message = (new Message())
+                $message = new Message()
                     ->from('from@example.com')
                     ->to(new Address('to@example.com', 'Name'))
                     ->subject('Subject')
