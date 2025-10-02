@@ -52,8 +52,8 @@ final class FakeHttp implements FakerInterface
         private FakeConfig $fakeConfig,
         private FileFactory $fileFactory,
         private TestCase $testCase,
-        private null|SessionInterface $session = null,
-        private array $replaceMiddlewares = [],
+        null|SessionInterface $session = null,
+        array $replaceMiddlewares = [],
     ) {
         // Replace response emitter for testing:
         $app->on(ResponseEmitterInterface::class, ResponseEmitter::class);
