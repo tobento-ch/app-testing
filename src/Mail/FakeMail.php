@@ -71,7 +71,7 @@ final class FakeMail implements FakerInterface
      * @param string $name
      * @return MailerInterface
      */
-    public function mailer(string $name = null): MailerInterface
+    public function mailer(string $name): MailerInterface
     {
         return $this->app->get(MailersInterface::class)->mailer($name);
     }
