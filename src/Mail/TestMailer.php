@@ -28,6 +28,7 @@ use Tobento\Service\Mail\Symfony\HtmlToTextConverter;
 use Tobento\Service\Mail\Event;
 use Tobento\Service\Mail\MailerException;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\HtmlToTextConverter\DefaultHtmlToTextConverter;
 use Closure;
 
 final class TestMailer implements MailerInterface
@@ -109,7 +110,7 @@ final class TestMailer implements MailerInterface
         
         // create text from html:
         if (is_null($message->getText()) && is_string($message->getHtml())) {
-            $text = (new HtmlToTextConverter)->convert($message->getHtml());            
+            $text = new DefaultHtmlToTextConverter()->convert($message->getHtml(), 'UTF-8');
             $message->text($text);
         }
         
