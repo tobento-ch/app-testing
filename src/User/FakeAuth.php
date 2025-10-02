@@ -34,8 +34,6 @@ use Psr\Clock\ClockInterface;
 
 final class FakeAuth implements FakerInterface
 {
-    private null|TokenStorageInterface $tokenStorage = null;
-    
     private null|string $tokenStorageName = null;
     
     /**
@@ -204,8 +202,10 @@ final class FakeAuth implements FakerInterface
     {
         switch ($name) {
             case 'session':
+                $session = $this->app->get(SessionInterface::class);
+                $session->start();
                 return new SessionStorage(
-                    session: $this->app->get(SessionInterface::class),
+                    session: $session,
                     clock: $this->app->get(ClockInterface::class),
                     regenerateId: false,
                 );
