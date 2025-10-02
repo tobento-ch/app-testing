@@ -1,43 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.4/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          backupGlobals="false"
          colors="true"
-         verbose="true"
          bootstrap="vendor/autoload.php"
          failOnRisky="true"
          failOnWarning="true"
-         convertErrorsToExceptions="true"
-         convertNoticesToExceptions="true"
-         convertWarningsToExceptions="true"
+         failOnDeprecation="true"
          stopOnFailure="false"
-         executionOrder="random"
-         resolveDependencies="true"
 >
     <testsuites>
         <testsuite name="App Testing tests">
             <directory>./tests</directory>
         </testsuite>
     </testsuites>
-
-    <coverage>
-        <include>
-            <directory>src</directory>
-        </include>
-    </coverage>
-    
     <php>
         <env name="TEST_DATABASE_PDO_MYSQL" value="false" />
         <env name="TEST_DATABASE_PDO_MYSQL_DSN" value="mysql:host=localhost;dbname=app_testing" />
         <env name="TEST_DATABASE_PDO_MYSQL_USERNAME" value="root" />
         <env name="TEST_DATABASE_PDO_MYSQL_PASSWORD" value="" />
     </php>
-    
-    <logging>
-        <junit outputFile="build/report.junit.xml"/>
-        <testdoxHtml outputFile="build/coverage"/>
-        <testdoxText outputFile="build/coverage.txt"/>
-        <testdoxXml outputFile="build/logs/clover.xml"/>
-    </logging>
 </phpunit>
