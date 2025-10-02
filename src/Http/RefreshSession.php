@@ -25,7 +25,7 @@ trait RefreshSession
     public function refreshSession(): void
     {
         $this->beforeRefreshSession();
-        $this->getApp()->get(SessionInterface::class)->deleteAll();
+        $this->getApp()->get(SessionInterface::class)->start()->deleteAll();
         $this->afterRefreshSession();
     }
     
