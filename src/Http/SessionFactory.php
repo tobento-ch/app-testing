@@ -24,12 +24,9 @@ class SessionFactory extends DefaultSessionFactory
 {
     /**
      * Create a new SessionFactory.
-     *
-     * @param null|BaseUriInterface $baseUri
      */
-    public function __construct(
-        //protected null|BaseUriInterface $baseUri = null,
-    ) {}
+    public function __construct()
+    {}
     
     /**
      * Create a new Session.
@@ -40,11 +37,6 @@ class SessionFactory extends DefaultSessionFactory
      */
     public function createSession(string $name, array $config = []): SessionInterface
     {
-        /*if ($this->baseUri && !isset($config['cookiePath'])) {
-            $basePath = $this->baseUri->getPath();
-            $config['cookiePath'] = rtrim($basePath, '/').'/';
-        }*/
-        
         return parent::createSession($name, $config);
     }
 }
