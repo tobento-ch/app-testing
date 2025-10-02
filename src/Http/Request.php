@@ -30,9 +30,9 @@ final class Request
      * @param array $serverParams
      */
     public function __construct(
-        private string $method,
-        private string $uri,
-        private array $serverParams = [],
+        string $method,
+        string $uri,
+        array $serverParams = [],
     ) {
         $this->request = (new Psr17Factory())->createServerRequest(
             method: $method,
