@@ -13,13 +13,16 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\Notifier;
 
+use Psr\EventDispatcher\EventDispatcherInterface;
 use PHPUnit\Framework\TestCase;
+use Tobento\App\Notifier\NotificationsInterface;
 use Tobento\App\Testing\FakerInterface;
 use Tobento\App\AppInterface;
 use Tobento\Service\Notifier\NotifierInterface;
 use Tobento\Service\Notifier\ChannelsInterface;
 use Tobento\Service\Notifier\ChannelInterface;
 use Tobento\Service\Notifier\Channels;
+use Tobento\Service\Notifier\QueueHandlerInterface;
 use Closure;
 
 final class FakeNotifier implements FakerInterface
@@ -35,7 +38,14 @@ final class FakeNotifier implements FakerInterface
         $app->on(
             NotifierInterface::class,
             function(): NotifierInterface {
-                return new Notifier($this->app->get(ChannelsInterface::class));
+                return new Notifier(
+                    notifications: $this->app->get(NotificationsInterface::class),
+                    channels: $this->app->get(ChannelsInterface::class),
+                    queueHandler: $this->app->get(QueueHandlerInterface::class),
+                    eventDispatcher: $this->app->has(EventDispatcherInterface::class)
+                        ? $this->app->get(EventDispatcherInterface::class)
+                        : null,
+                );
             }
         );
 

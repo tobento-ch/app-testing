@@ -14,13 +14,16 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\Notifier;
 
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Tobento\App\Notifier\NotificationsInterface;
+use Tobento\App\Notifier\Notifier as DefaultNotifier;
 use Tobento\Service\Notifier\NotifierInterface;
-use Tobento\Service\Notifier\Notifier as DefaultNotifier;
 use Tobento\Service\Notifier\ChannelsInterface;
 use Tobento\Service\Notifier\ChannelMessagesInterface;
 use Tobento\Service\Notifier\NotificationInterface;
 use Tobento\Service\Notifier\RecipientInterface;
 use Tobento\Service\Notifier\Exception\NotifierException;
+use Tobento\Service\Notifier\QueueHandlerInterface;
 use Tobento\Service\Iterable\Iter;
 
 final class Notifier implements NotifierInterface
@@ -32,13 +35,24 @@ final class Notifier implements NotifierInterface
     /**
      * Create a new Notifier.
      *
+     * @param NotificationsInterface $notifications
      * @param ChannelsInterface $channels
+     * @param null|QueueHandlerInterface $queueHandler
+     * @param null|EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
+        NotificationsInterface $notifications,
         ChannelsInterface $channels,
+        null|QueueHandlerInterface $queueHandler = null,
+        null|EventDispatcherInterface $eventDispatcher = null,
     ) {
         // we create a new Notifier without queue handler and event dispatcher:
-        $this->notifier = new DefaultNotifier(channels: $channels);
+        $this->notifier = new DefaultNotifier(
+            notifications: $notifications,
+            channels: $channels,
+            queueHandler: $queueHandler,
+            eventDispatcher: $eventDispatcher,
+        );
     }
     
     /**
@@ -54,8 +68,12 @@ final class Notifier implements NotifierInterface
         $messages = $this->notifier->send($notification, ...$recipients);
         $messagesArr = Iter::toArray(iterable: $messages);
         
+        if (empty($messagesArr)) {
+            return $messages;
+        }
+        
         foreach (array_keys($recipients) as $key) {
-            $this->notifications[$notification::class][] = $messagesArr[$key];
+            $this->notifications[$notification::class][] = $messagesArr[$key] ?? null;
         }
         
         return $messages;
