@@ -17,6 +17,7 @@ Testing support for the app.
         - [Json Response](#json-response)
         - [Response Macros](#response-macros)
         - [Refresh Session](#refresh-session)
+        - [Dump Response](#dump-response)
     - [Auth Tests](#auth-tests)
     - [File Storage Tests](#file-storage-tests)
     - [Queue Tests](#queue-tests)
@@ -765,6 +766,23 @@ final class SomeAppTest extends TestCase
         // ...
     }
 }
+```
+
+### Dump Response
+
+You may use the dump methods to examine and debug the PSR-7 response contents:
+```php
+// dumps response:
+$http->response()->dump();
+
+// dumps response body:
+$http->response()->dumpBody();
+
+// dumps response and stops execution:
+$http->response()->dd();
+
+// dumps response body and stops execution:
+$http->response()->ddBody();
 ```
 
 ## Auth Tests
