@@ -1,6 +1,6 @@
 {
     "name": "tobento/app-testing",
-    "version": "2.0",
+    "version": "2.0.1",
     "type": "library",
     "description": "App testing support.",
     "keywords": [
@@ -33,7 +33,8 @@
         "nyholm/psr7": "^1.8",
         "symfony/mime": "^7.3",
         "symfony/dom-crawler": "^7.3",
-        "symfony/css-selector": "^7.3"
+        "symfony/css-selector": "^7.3",
+        "symfony/var-dumper": "^7.3"
     },  
     "require-dev": {
         "phpunit/phpunit": "^12.3",
