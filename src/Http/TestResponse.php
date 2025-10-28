@@ -503,6 +503,50 @@ class TestResponse implements Stringable
     }
     
     /**
+     * Dumps the response.
+     *
+     * @return $this
+     */
+    public function dump(): self
+    {
+        dump($this->response);
+        return $this;
+    }
+    
+    /**
+     * Dumps the response and stops execution.
+     *
+     * @return never
+     */
+    public function dd(): never
+    {
+        dump($this->response);
+        exit;
+    }
+    
+    /**
+     * Dumps the response body.
+     *
+     * @return $this
+     */
+    public function dumpBody(): self
+    {
+        dump((string)$this);
+        return $this;
+    }
+    
+    /**
+     * Dumps the response body and stops execution.
+     *
+     * @return never
+     */
+    public function ddBody(): never
+    {
+        dump((string)$this);
+        exit;
+    }
+    
+    /**
      * Returns the response body.
      *
      * @return string
