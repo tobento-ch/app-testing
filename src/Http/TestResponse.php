@@ -372,10 +372,10 @@ class TestResponse implements Stringable
      * Asserts if the session has the same specified key (and value).
      *
      * @param string $key
-     * @param null|string $value
+     * @param mixed $value
      * @return static
      */
-    public function assertHasSession(string $key, null|string $value = null): static
+    public function assertHasSession(string $key, mixed $value = null): static
     {
         TestCase::assertTrue(
             $this->session?->has($key),
