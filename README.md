@@ -28,6 +28,8 @@ Testing support for the app.
         - [Reset Databases](#reset-databases)
         - [Replace Databases](#replace-databases)
     - [Logging Tests](#logging-tests)
+    - [Addons](#addons)
+        - [Languages Addon](#languages-addon)
 - [Credits](#credits)
 ___
 
@@ -1501,6 +1503,45 @@ class LoggingTest extends \Tobento\App\Testing\TestCase
         // specific logger:
         $fakeLogging->logger(name: 'error')
             ->assertNothingLogged();
+    }
+}
+```
+
+## Addons
+
+### Languages Addon
+
+If you have installed the [App Language](https://github.com/tobento-ch/app-language) bundle you may test your application using the ```LanguagesAddon``` trait which allows you to register languages using the ```withLanguages``` method. The first locale is the default language.
+
+```php
+use Tobento\App\AppInterface;
+
+class LanguagesTest extends \Tobento\App\Testing\TestCase
+{
+    use \Tobento\App\Testing\Addon\LanguagesAddon;
+    
+    public function createApp(): AppInterface
+    {
+        $app = $this->createTmpApp(rootDir: __DIR__.'/..');
+        $app->boot(\Tobento\App\Http\Boot\Routing::class);
+        $app->boot(\Tobento\App\Language\Boot\Language::class);
+        
+        // you may define languages globally:
+        $this->withLanguages('en', 'de', 'fr');
+        
+        return $app;
+    }
+
+    public function testWithLanguages()
+    {
+        // fakes:
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'login');
+        
+        // you may define it for each tests:
+        $this->withLanguages('en', 'de');
+        
+        $http->response()->assertStatus(200);
     }
 }
 ```
