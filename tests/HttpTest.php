@@ -240,6 +240,7 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             $router->get('blog', function (ServerRequestInterface $request) {
                 $session = $request->getAttribute(SessionInterface::class);
                 $session->set('key', 'value');
+                $session->set('foo', 1);
                 return 'blog';
             });
         });
@@ -248,6 +249,7 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             ->assertStatus(200)
             ->assertHasSession('key')
             ->assertHasSession('key', 'value')
+            ->assertHasSession('foo', 1)
             ->assertSessionMissing('baz');
     }
     
