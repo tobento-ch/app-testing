@@ -22,6 +22,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Tobento\Service\Macro\Macroable;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Support\Str;
 
 /**
  * TestResponse
@@ -156,12 +157,13 @@ class TestResponse implements Stringable
      * Asserts if the response body is the same as the specified body.
      *
      * @param string $body
+     * @param bool $escape
      * @return static
      */
-    public function assertBodySame(string $body): static
+    public function assertBodySame(string $body, bool $escape = false): static
     {
         TestCase::assertSame(
-            $body,
+            $escape ? Str::esc($body) : $body,
             (string)$this->response->getBody(),
             sprintf('Response is not same with [%s]', $body)
         );
@@ -173,12 +175,13 @@ class TestResponse implements Stringable
      * Asserts if the response body is the same as the specified body.
      *
      * @param string $body
+     * @param bool $escape
      * @return static
      */
-    public function assertBodyNotSame(string $body): static
+    public function assertBodyNotSame(string $body, bool $escape = false): static
     {
         TestCase::assertNotSame(
-            $body,
+            $escape ? Str::esc($body) : $body,
             (string)$this->response->getBody(),
             sprintf('Response is same with [%s]', $body)
         );
@@ -190,12 +193,13 @@ class TestResponse implements Stringable
      * Asserts if the response body contains the specified value.
      *
      * @param string $value
+     * @param bool $escape
      * @return static
      */
-    public function assertBodyContains(string $value): static
+    public function assertBodyContains(string $value, bool $escape = false): static
     {
         TestCase::assertStringContainsString(
-            $value,
+            $escape ? Str::esc($value) : $value,
             (string)$this->response->getBody(),
             sprintf('Response doesn\'t contain [%s]', $value)
         );
@@ -207,12 +211,13 @@ class TestResponse implements Stringable
      * Asserts if the response body does not contain the specified value.
      *
      * @param string $value
+     * @param bool $escape
      * @return static
      */
-    public function assertBodyNotContains(string $value): static
+    public function assertBodyNotContains(string $value, bool $escape = false): static
     {
         TestCase::assertStringNotContainsString(
-            $value,
+            $escape ? Str::esc($value) : $value,
             (string)$this->response->getBody(),
             sprintf('Response does contain [%s]', $value)
         );
