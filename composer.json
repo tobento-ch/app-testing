@@ -1,6 +1,6 @@
 {
     "name": "tobento/app-testing",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "type": "library",
     "description": "App testing support.",
     "keywords": [
@@ -29,6 +29,7 @@
         "tobento/service-collection": "^2.0",
         "tobento/service-iterable": "^2.0",
         "tobento/service-macro": "^2.0",
+        "tobento/service-support": "^2.0",
         "mockery/mockery": "^1.6",
         "nyholm/psr7": "^1.8",
         "symfony/mime": "^7.3",
