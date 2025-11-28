@@ -21,6 +21,7 @@ use Tobento\Service\Requester\RequesterInterface;
 use Tobento\Service\Responser\ResponserInterface;
 use Tobento\Service\Cookie\CookieValuesInterface;
 use Tobento\Service\Session\SessionInterface;
+use Tobento\Service\Support\Str;
 use Tobento\Service\Uri\PreviousUriInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Psr\Http\Message\ServerRequestInterface;
@@ -84,6 +85,30 @@ class HttpTest extends \Tobento\App\Testing\TestCase
             ->assertHasHeader(name: 'Content-type')
             ->assertHasHeader(name: 'Content-type', value: 'application/json')
             ->assertHeaderMissing(name: 'Accept');
+    }
+    
+    public function testBodyWithEscaping()
+    {
+        $http = $this->fakeHttp();
+        $http->request(
+            method: 'GET',
+            uri: 'blog',
+            query: ['sort' => 'desc'],
+            headers: ['Content-type' => 'application/json'],
+        );
+        
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->get('blog', function () {
+                return Str::esc('you\'ve been redirected to this page.');
+            });
+        });
+        
+        $http->response()
+            ->assertStatus(200)
+            ->assertBodySame('you\'ve been redirected to this page.', true)
+            ->assertBodyNotSame('bar', true)
+            ->assertBodyContains('you\'ve been', true)
+            ->assertBodyNotContains('foo', true);
     }
     
     public function testPostRequest()
