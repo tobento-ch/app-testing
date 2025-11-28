@@ -260,10 +260,10 @@ use Psr\Http\Message\ResponseInterface;
 
 $http->response()
     ->assertStatus(200)
-    ->assertBodySame('foo')
-    ->assertBodyNotSame('bar')
-    ->assertBodyContains('foo')
-    ->assertBodyNotContains('bar')
+    ->assertBodySame(body: 'foo', escape: false)
+    ->assertBodyNotSame(body: 'bar', escape: false)
+    ->assertBodyContains(value: 'foo', escape: false)
+    ->assertBodyNotContains(value: 'bar', escape: false)    
     ->assertContentType('application/json')
     ->assertHasHeader(name: 'Content-type')
     ->assertHasHeader(name: 'Content-type', value: 'application/json') // with value
