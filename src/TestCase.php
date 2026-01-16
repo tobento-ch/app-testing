@@ -23,6 +23,8 @@ abstract class TestCase extends BaseTestCase
 {
     use Traits\InteractsWithConfig;
     use Traits\InteractsWithHttp;
+    use Traits\InteractsWithHttpClient;
+    use Traits\InteractsWithHttpResponseEmitter;
     use Traits\InteractsWithUser;
     use Traits\InteractsWithFileStorage;
     use Traits\InteractsWithQueue;
@@ -37,12 +39,15 @@ abstract class TestCase extends BaseTestCase
     
     private array $fakers = [];
     
+    private array $onCreateAppCallbacks = [];
+    
     protected function setUp(): void
     {
         parent::setUp();
 
         if (static::CREATE_APP_ON_SETUP) {
             $this->app = $this->createApp();
+            $this->applyOnCreateAppCallbacks($this->app);
         }
         
         $this->fakers = [];
@@ -55,6 +60,8 @@ abstract class TestCase extends BaseTestCase
         parent::tearDown();
         
         $this->runTraits('tearDown');
+        
+        $this->onCreateAppCallbacks = [];
     }
 
     /**
@@ -83,12 +90,12 @@ abstract class TestCase extends BaseTestCase
         $appDir = $rootDir.'/tests/tmp/'.$folder.'/';
         
         if ($fresh) {
-            (new Dir())->delete($appDir);
+            new Dir()->delete($appDir);
         }
         
-        (new Dir())->create($appDir);
+        new Dir()->create($appDir);
                 
-        $app = (new AppFactory())->createApp();
+        $app = new AppFactory()->createApp();
         
         $app->dirs()
             ->dir($rootDir, 'root')
@@ -111,6 +118,7 @@ abstract class TestCase extends BaseTestCase
     {
         if (is_null($this->app)) {
             $this->app = $this->createApp();
+            $this->applyOnCreateAppCallbacks($this->app);
         }
         
         return $this->app;
@@ -145,7 +153,25 @@ abstract class TestCase extends BaseTestCase
      */
     public function newApp(): AppInterface
     {
-        return $this->app = $this->createApp();
+        $this->app = $this->createApp();
+        $this->applyOnCreateAppCallbacks($this->app);
+        return $this->app;
+    }
+    
+    /**
+     * Add a callaback.
+     *
+     * @param callable $callback
+     * @return void
+     */
+    public function onCreateApp(callable $callback): void
+    {
+        $this->onCreateAppCallbacks[] = $callback;
+        
+        // If the app already exists, apply immediately
+        if (!is_null($this->app)) {
+            $callback($this->app);
+        }
     }
     
     /**
@@ -231,5 +257,21 @@ abstract class TestCase extends BaseTestCase
 
             $ref = $parent;
         }
+    }
+    
+    /**
+     * Executes all registered on‑create‑app callbacks for the given app instance.
+     *
+     * @param AppInterface $app
+     * @return void
+     */
+    private function applyOnCreateAppCallbacks(AppInterface $app): void
+    {
+        foreach($this->onCreateAppCallbacks as $callback) {
+            $callback($app);
+        }
+
+        // Clear after applying
+        //$this->onCreateAppCallbacks = [];
     }
 }
