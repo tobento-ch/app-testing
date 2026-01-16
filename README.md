@@ -18,7 +18,12 @@ Testing support for the app.
         - [Response Macros](#response-macros)
         - [Refresh Session](#refresh-session)
         - [Dump Response](#dump-response)
+        - [Response Emitter](#response-emitter)
+    - [Http Client Tests](#http-client-tests)
     - [Auth Tests](#auth-tests)
+        - [Authenticating Users](#authenticating-users)
+        - [Adding Permissions](#adding-permissions)
+        - [Seeding Users](#seeding-users)
     - [File Storage Tests](#file-storage-tests)
     - [Queue Tests](#queue-tests)
     - [Event Tests](#event-tests)
@@ -87,7 +92,7 @@ final class SomeAppTest extends TestCase
 }
 ```
 
-Finally, write tests using the available fakers.
+**Finally**, write tests using the available fakers.
 
 By default, the app is not booted nor run yet. You will need to do it on each test method. Some faker methods will run the app automatically though such as the fakeHttp ```response``` method.
 
@@ -116,6 +121,42 @@ final class SomeAppTest extends TestCase
         $http->response()
             ->assertStatus(200)
             ->assertBodySame('foo');
+    }
+}
+```
+
+**Using `onCreateApp()`**
+
+In addition to the `createApp()` method, you may use `onCreateApp()` inside your test methods to register custom implementations - such as routes, middleware, or service overrides - needed specifically for that test.
+
+When `onCreateApp()` is executed, the application has not been booted yet. This allows you to use [`$app->on()`](https://github.com/tobento-ch/app#on) to modify or extend services before they are resolved. The callback you provide will be applied to every app instance created during the test, including those created internally during redirects.
+
+```php
+use Tobento\App\AppInterface;
+use Tobento\App\Testing\TestCase;
+use Tobento\Service\Routing\RouterInterface;
+
+final class SomeAppTest extends TestCase
+{
+    public function testSomeRoute(): void
+    {
+        $this->onCreateApp(function(AppInterface $app) {
+            $app->on(RouterInterface::class, function($router) {
+                $router->get('example', fn() => 'ok');
+            });
+        });
+    
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'example');
+        
+        // interact with the app:
+        $app = $this->getApp();
+
+        // assertions:
+        $http->response()
+            ->assertStatus(200)
+            ->assertBodySame('ok');
     }
 }
 ```
@@ -787,9 +828,234 @@ $http->response()->dd();
 $http->response()->ddBody();
 ```
 
+### Response Emitter
+
+When your application emits a PSR-7 response directly-bypassing the normal HTTP kernel-you can fake the response emitter to capture and assert against the emitted response.
+
+This is useful when testing:
+
+- download handlers
+- streaming responses
+- services that manually emit responses
+- middleware or components that call the emitter directly
+
+You may fake the response emitter as follows:
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testOutgoingResponse(): void
+    {
+        // Fake the response emitter:
+        $emitter = $this->fakeHttpResponseEmitter();
+
+        // Interact with your application:
+        $app = $this->getApp();
+        $app->booting();
+
+        // Code that triggers an emitted response...
+        // e.g. $app->get(DownloadHandler::class)->handle($file);
+
+        // Assert that a response was emitted:
+        $response = $emitter->response();
+        $response->assertStatus(200);
+
+        // Assert headers:
+        $response->assertHasHeader('Content-Type', 'application/pdf');
+
+        // Assert body content:
+        $response->assertBodySame(body: 'foo', escape: false);
+    }
+}
+```
+
+**Notes**
+
+- The fake emitter automatically re-registers itself when the testing framework boots a new app instance  
+  (for example during `followRedirects()`).
+
+- `TestResponse` is fully supported, including:
+  - status assertions  
+  - header assertions  
+  - body assertions  
+  - JSON assertions  
+  - macro support  
+
+For a full list of available `TestResponse` methods, see the  
+[Request And Response - Response Methods](#request-and-response) section.
+
+## Http Client Tests
+
+If you have installed the [App Http](https://github.com/tobento-ch/app-http) bundle, you may test outgoing HTTP requests made by your application using the `fakeHttpClient` method.
+
+When your application makes outgoing HTTP requests using a PSR-18 client, you can intercept and assert those requests by faking the HTTP client.  
+This allows you to test integrations such as webhooks, API calls, and external services without performing real network requests.
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testOutgoingRequest(): void
+    {
+        // Fake the PSR-18 client:
+        $client = $this->fakeHttpClient();
+
+        // Interact with your application:
+        $app = $this->getApp();
+        $app->booting();
+
+        // Your code that triggers an outgoing HTTP request...
+        // e.g. $app->get(Service::class)->sendWebhook();
+
+        // Assert that at least one request was sent:
+        $client->assertSent();
+
+        // Assert that a specific request was sent:
+        $client->assertSent(function ($request) {
+            return $request->getMethod() === 'POST'
+                && (string)$request->getUri() === 'https://example.com/webhook';
+        });
+
+        // Assert that no GET request was sent:
+        $client->assertNotSent(function ($request) {
+            return $request->getMethod() === 'GET';
+        });
+
+        // Assert the exact number of requests sent:
+        $client->assertSentCount(1);
+        
+        // Assert that a POST request was sent exactly twice:
+        $client->assertSentTimes(function ($request) {
+            return $request->getMethod() === 'POST';
+        }, 2);
+
+        // Assert that no requests were sent:
+        $client->assertNothingSent();
+    }
+}
+```
+
+**Fake Response**
+
+You may fake the response returned by the next outgoing HTTP request.  
+This is useful when testing how your application behaves when an external API returns a specific status code, headers, or body.
+
+```php
+use Nyholm\Psr7\Response;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testFakeResponse(): void
+    {
+        // Fake the PSR-18 client:
+        $client = $this->fakeHttpClient();
+
+        // Interact with your application:
+        $app = $this->getApp();
+        $app->booting();
+
+        // Fake the next response using a concrete PSR-7 implementation:
+        $client->fakeResponse(new Response(201));
+
+        // Or fake the next response using the PSR-17 response factory:
+        $responseFactory = $app->get(ResponseFactoryInterface::class);
+        $client->fakeResponse($responseFactory->createResponse(200));
+
+        // Your code that triggers an outgoing HTTP request...
+        // e.g. $app->get(Service::class)->sendWebhook();
+
+        // Assert that a request was sent:
+        $client->assertSent();
+
+        // Assert that a specific request was sent:
+        $client->assertSent(function($request) {
+            return $request->getMethod() === 'POST';
+        });
+    }
+}
+```
+
+**Fake Exception**
+
+You may fake an exception that will be thrown on the next outgoing HTTP request.  
+This is useful for testing how your application handles network failures, timeouts, or unexpected client errors.
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testFakeException(): void
+    {
+        // Fake the PSR-18 client:
+        $client = $this->fakeHttpClient();
+
+        // Fake an exception thrown on the next request:
+        $client->fakeException(new \RuntimeException('Network error'));
+
+        // Interact with your application:
+        $app = $this->getApp();
+        $app->booting();
+
+        // Your code that triggers an outgoing HTTP request...
+        // e.g. $app->get(Service::class)->sendWebhook();
+
+        // Assert that a request was sent:
+        $client->assertSent();
+
+        // Assert that a specific request was sent:
+        $client->assertSent(function ($request) {
+            return $request->getMethod() === 'POST';
+        });
+    }
+}
+```
+
+**Inspecting Requests**
+
+You may inspect the recorded outgoing HTTP requests for debugging or for writing additional custom assertions.  
+This is useful when you need to check headers, payloads, query parameters, or the order of requests.
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testInspectRequests(): void
+    {
+        // Fake the PSR-18 client:
+        $client = $this->fakeHttpClient();
+
+        // Interact with your application:
+        $app = $this->getApp();
+        $app->booting();
+
+        // Your code that triggers outgoing HTTP requests...
+        // e.g. $app->get(Service::class)->sendWebhook();
+
+        // Get the last outgoing request:
+        $last = $client->lastRequest();
+
+        // Get all outgoing requests:
+        $all = $client->requests();
+
+        // Example: inspect headers or body
+        // $last->getHeaderLine('Content-Type');
+        // (string)$last->getBody();
+    }
+}
+```
+
 ## Auth Tests
 
 If you have installed the [App User](https://github.com/tobento-ch/app-user) bundle you may test your application using the ```fakeAuth``` method.
+
+### Authenticating Users
 
 The next two examples assumes you have already seeded test users in some way:
 
@@ -833,11 +1099,10 @@ final class SomeAppTest extends TestCase
 
 **Example With Token**
 
-You may want to authenticate a user by creating a token:
+You may want to authenticate a user by creating a token manually:
 
 ```php
 use Tobento\App\Testing\TestCase;
-use Tobento\App\User\UserRepositoryInterface;
 
 final class SomeAppTest extends TestCase
 {
@@ -871,7 +1136,46 @@ final class SomeAppTest extends TestCase
 }
 ```
 
-**Example Seeding Users**
+### Adding Permissions
+
+If your application uses the ACL system, you may assign permissions to the authenticated user using the `addPermissions()` method.
+
+Permissions are applied immediately and are also re-applied automatically when the testing framework boots a fresh app instance (for example during `followRedirects()`).
+
+```php
+use Tobento\App\Testing\TestCase;
+
+final class SomeAppTest extends TestCase
+{
+    public function testRouteWithPermissions(): void
+    {
+        // faking:
+        $http = $this->fakeHttp();
+        $http->request('GET', 'dashboard');
+        $auth = $this->fakeAuth();
+        
+        // boot the app:
+        $app = $this->bootingApp();
+        
+        // authenticate user:
+        $user = $auth->getUserRepository()->findByIdentity(email: 'editor@example.com');
+        $auth->authenticatedAs($user);
+        
+        // add permissions:
+        $auth->addPermissions([
+            'articles',
+            'articles.edit',
+            'articles.own',
+        ]);
+        
+        // assertions:
+        $http->response()->assertStatus(200);
+        $auth->assertAuthenticated();
+    }
+}
+```
+
+### Seeding Users
 
 This is one possible way of seeding users for testing. You could also seed users by creating and using [Seeders](https://github.com/tobento-ch/app-seeding/#seeders).
 
@@ -1122,7 +1426,7 @@ use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Event\EventsInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-class QueueTest extends \Tobento\App\Testing\TestCase
+class EventTest extends \Tobento\App\Testing\TestCase
 {
     public function createApp(): AppInterface
     {
