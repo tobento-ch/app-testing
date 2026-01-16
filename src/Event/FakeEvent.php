@@ -28,17 +28,7 @@ final class FakeEvent implements FakerInterface
      */
     public function __construct(
         private AppInterface $app,
-    ) {
-        /*$app->on(
-            EventsInterface::class,
-            function(EventsInterface $events): EventsInterface {
-                if ($this->testEvents) {
-                    return $this->testEvents->setEvents(events: $events);
-                }
-                return $events;
-            }
-        )->priority(-1500);*/
-    }
+    ) {}
     
     /**
      * Returns a new instance.
