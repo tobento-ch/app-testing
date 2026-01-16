@@ -13,28 +13,35 @@ declare(strict_types=1);
 
 namespace Tobento\App\Testing\User;
 
+use Closure;
 use PHPUnit\Framework\TestCase;
-use Tobento\App\Testing\FakerInterface;
+use Psr\Clock\ClockInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Tobento\App\AppInterface;
-use Tobento\App\User\UserInterface;
-use Tobento\App\User\UserRepositoryInterface;
-use Tobento\App\User\PasswordHasherInterface;
+use Tobento\App\Testing\FakerInterface;
 use Tobento\App\User\Authentication\AuthInterface;
 use Tobento\App\User\Authentication\AuthenticatedInterface;
-use Tobento\App\User\Authentication\Token\TokenInterface;
-use Tobento\App\User\Authentication\Token\TokenStorageInterface;
 use Tobento\App\User\Authentication\Token\InMemoryStorage;
-use Tobento\App\User\Authentication\Token\SessionStorage;
 use Tobento\App\User\Authentication\Token\RepositoryStorage;
+use Tobento\App\User\Authentication\Token\SessionStorage;
+use Tobento\App\User\Authentication\Token\TokenInterface;
 use Tobento\App\User\Authentication\Token\TokenRepository;
-use Tobento\Service\Storage\StorageInterface;
+use Tobento\App\User\Authentication\Token\TokenStorageInterface;
+use Tobento\App\User\PasswordHasherInterface;
+use Tobento\App\User\UserInterface;
+use Tobento\App\User\UserRepositoryInterface;
+use Tobento\Service\Acl\AclInterface;
 use Tobento\Service\Session\SessionInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Clock\ClockInterface;
+use Tobento\Service\Storage\StorageInterface;
 
 final class FakeAuth implements FakerInterface
 {
     private null|string $tokenStorageName = null;
+    
+    /**
+     * @var array<int, Closure>
+     */
+    private array $newCallbacks = [];
     
     /**
      * Create a new FakeAuth.
@@ -76,14 +83,26 @@ final class FakeAuth implements FakerInterface
             $fakeAuth->authenticatedAs($auth->getAuthenticated()->token());
         }
         
+        foreach($this->newCallbacks as $callback) {
+            $callback($app, $fakeAuth);
+        }
+        
         return $fakeAuth;
     }
     
     /**
-     * Set the authenticated user.
+     * Sets the currently authenticated user for the testing context.
      *
-     * @param UserInterface|TokenInterface $token
-     * @return static $this
+     * The provided user or token becomes the active authentication state
+     * for the current app instance. This allows tests to simulate requests
+     * made by a specific user without interacting with real authentication
+     * mechanisms.
+     *
+     * The authenticated state is also preserved when the testing framework
+     * boots a fresh app instance (for example during followRedirects()).
+     *
+     * @param UserInterface|TokenInterface $token The user or token to authenticate as.
+     * @return static
      */
     public function authenticatedAs(UserInterface|TokenInterface $token): static
     {
@@ -109,6 +128,33 @@ final class FakeAuth implements FakerInterface
             }
         )->priority(-1500);
         
+        return $this;
+    }
+    
+    /**
+     * Adds the given permissions to the current authentication context.
+     *
+     * The permissions are applied immediately to the active app instance,
+     * and are also re-applied automatically whenever the testing framework
+     * boots a fresh app context (for example during followRedirects()).
+     *
+     * @param array<int, string> $permissions  A list of permission identifiers.
+     * @return static
+     */
+    public function addPermissions(array $permissions): static
+    {
+        if (!empty($permissions)) {
+            // Apply permissions to the current app instance
+            $this->app->get(AclInterface::class)->addPermissions($permissions);
+
+            // Ensure permissions persist across new fake instances
+            $this->onNew(function(AppInterface $app) use ($permissions): void {
+                $app->on(AclInterface::class, function(AclInterface $acl) use ($permissions): void {
+                    $acl->addPermissions($permissions);
+                });
+            });
+        }
+
         return $this;
     }
 
@@ -160,7 +206,7 @@ final class FakeAuth implements FakerInterface
     public function getUserRepository(): UserRepositoryInterface
     {
         return $this->app->get(UserRepositoryInterface::class);
-    }
+    }    
     
     /**
      * Asserts that a user is authenticated.
@@ -189,6 +235,23 @@ final class FakeAuth implements FakerInterface
             'The user is authenticated'
         );
         
+        return $this;
+    }
+    
+    /**
+     * Registers a callback that will be executed when a new FakeAuth
+     * instance is created for a fresh app context.
+     *
+     * The callback receives both the newly booted App instance and the
+     * newly created FakeAuth instance, allowing you to re‑apply state
+     * such as permissions or authentication.
+     *
+     * @param Closure(AppInterface, FakeAuth): void $callback
+     * @return static
+     */
+    private function onNew(Closure $callback): static
+    {
+        $this->newCallbacks[] = $callback;
         return $this;
     }
     
