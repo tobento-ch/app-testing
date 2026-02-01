@@ -44,7 +44,8 @@ final class FakeFileStorage implements FakerInterface
                 }
 
                 foreach($storages->names() as $name) {
-                    $fakeStorages->add($this->createStorage($name, $rootDir));
+                    $storage = $storages->get($name);
+                    $fakeStorages->add($this->createStorage($name, $rootDir, $storage->type()));
                 }
                 
                 return $fakeStorages;
@@ -93,9 +94,10 @@ final class FakeFileStorage implements FakerInterface
      *
      * @param string $name
      * @param string $rootDir
+     * @param string $type
      * @return StorageInterface
      */
-    private function createStorage(string $name, string $rootDir): StorageInterface
+    private function createStorage(string $name, string $rootDir, string $type): StorageInterface
     {
         $filesystem = new \League\Flysystem\Filesystem(
             adapter: new \League\Flysystem\Local\LocalFilesystemAdapter(
@@ -110,6 +112,7 @@ final class FakeFileStorage implements FakerInterface
                 flysystem: $filesystem,
                 streamFactory: new Psr17Factory()
             ),
+            type: $type,
         );
     }
 }
