@@ -19,7 +19,6 @@ use Tobento\App\Testing\FileStorage\RefreshFileStorages;
 use Tobento\Service\Responser\ResponserInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\FileStorage\StoragesInterface;
-use Tobento\Service\FileStorage\Visibility;
 
 class FileStorageTest extends \Tobento\App\Testing\TestCase
 {
@@ -76,7 +75,6 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
                 $storage->copy(from: $file->getClientFilename(), to: 'copy/'.$file->getClientFilename());
                 $storage->move(from: 'copy/'.$file->getClientFilename(), to: 'move/'.$file->getClientFilename());
                 $storage->createFolder('foo/bar');
-                $storage->setVisibility('foo/bar', Visibility::PRIVATE);
                 
                 return 'response';
             });
@@ -98,8 +96,7 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
             ->assertFolderCreated('foo/bar')
             ->assertFolderNotCreated('baz')
             ->assertFolderExists('foo/bar')
-            ->assertFolderNotExist('baz')
-            ->assertVisibilityChanged('foo/bar');
+            ->assertFolderNotExist('baz');
     }
     
     public function testFollowingRedirects()

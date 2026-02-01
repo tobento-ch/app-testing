@@ -81,46 +81,11 @@ final class TestStorage extends Storage
         return $this;
     }
 
-    public function write(string $path, mixed $content, null|string $visibility = null): void
+    public function write(string $path, mixed $content): void
     {
-        parent::write($path, $content, $visibility);
+        parent::write($path, $content);
         
-        $this->created[] = compact('path', 'visibility');
-    }
-    
-    public function assertVisibilityChanged(string $path): static
-    {
-        $files = $this->filterFiles($this->visibility, function (array $data) use ($path) {
-            return $data['path'] === $path;
-        });
-
-        TestCase::assertTrue(
-            count($files) > 0,
-            sprintf('The expected [%s] file visibility was not changed.', $path)
-        );
-        
-        return $this;
-    }
-
-    public function assertVisibilityNotChanged(string $path): static
-    {
-        $files = $this->filterFiles($this->visibility, function (array $data) use ($path) {
-            return $data['path'] === $path;
-        });
-
-        TestCase::assertTrue(
-            count($files) === 0,
-            sprintf('The expected [%s] file visibility was changed.', $path)
-        );
-        
-        return $this;
-    }
-    
-    public function setVisibility(string $path, string $visibility): void
-    {
-        parent::setVisibility($path, $visibility);
-        
-        $this->visibility[] = compact('path', 'visibility');
+        $this->created[] = compact('path');
     }
     
     public function assertCopied(string $from, string $to): static
