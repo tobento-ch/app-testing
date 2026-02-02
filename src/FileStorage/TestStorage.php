@@ -22,7 +22,6 @@ final class TestStorage extends Storage
     private array $created = [];
     private array $copied = [];
     private array $moved = [];
-    private array $visibility = [];
     private array $createdFolders = [];
     private array $deletedFolders = [];
     
