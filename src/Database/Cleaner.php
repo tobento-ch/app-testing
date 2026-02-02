@@ -46,6 +46,7 @@ class Cleaner
             if (
                 $storage instanceof Storage\PdoMariaDbStorage
                 || $storage instanceof Storage\PdoMySqlStorage
+                || $storage instanceof Storage\PdoSqliteStorage
             ) {
                 return $this->truncatePdoDatabase(new PdoDatabase(pdo: $storage->pdo(), name: ''));
             }
@@ -69,24 +70,42 @@ class Cleaner
      */
     protected function truncatePdoDatabase(PdoDatabaseInterface $database): static
     {
-        foreach($this->pdos as $pdo) {
+        foreach ($this->pdos as $pdo) {
             if ($pdo === $database->pdo()) {
                 return $this;
             }
         }
-        
-        $tables = $database->execute(
-            statement: 'SHOW TABLES',
-        )->fetchAll(PDO::FETCH_COLUMN);
 
-        foreach($tables as $table) {
-            $database->execute(
-                statement: 'TRUNCATE `'.$table.'`',
-            );
+        $pdo = $database->pdo();
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'sqlite') {
+            // Get all tables except internal sqlite_ tables
+            $tables = $database->execute(
+                statement: "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )->fetchAll(PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                $database->execute(statement: 'DELETE FROM "'.$table.'"');
+            }
+
+            // Optional: clean up DB file
+            //$database->execute(statement: 'VACUUM');
+        } else {
+            // MySQL / MariaDB
+            $tables = $database->execute(
+                statement: 'SHOW TABLES'
+            )->fetchAll(PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                $database->execute(
+                    statement: 'TRUNCATE `'.$table.'`'
+                );
+            }
         }
-        
-        $this->pdos[] = $database->pdo();
-        
+
+        $this->pdos[] = $pdo;
+
         return $this;
     }
 }
