@@ -14,7 +14,10 @@ declare(strict_types=1);
 namespace Tobento\App\Testing\Notifier;
 
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
+use Psr\Container\ContainerInterface;
 use Tobento\Service\Notifier\ChannelInterface;
+use Tobento\Service\Notifier\GuestRecipient;
 use Tobento\Service\Notifier\NotificationInterface;
 use Tobento\Service\Notifier\RecipientInterface;
 use Tobento\Service\Notifier\Message;
@@ -25,7 +28,6 @@ use Tobento\Service\Mail\MailerInterface;
 use Tobento\Service\Mail\MessageInterface;
 use Tobento\Service\Mail\Address as Adr;
 use Tobento\Service\Autowire\Autowire;
-use Psr\Container\ContainerInterface;
 
 class Channel implements ChannelInterface
 {
@@ -66,6 +68,7 @@ class Channel implements ChannelInterface
             str_starts_with($this->name(), 'chat') => $this->pushMessage($notification, $recipient),
             str_starts_with($this->name(), 'push') => $this->pushMessage($notification, $recipient),
             str_starts_with($this->name(), 'storage') => $this->storageMessage($notification, $recipient),
+            str_starts_with($this->name(), 'browser') => $this->browserMessage($notification, $recipient),
             default => throw new \RuntimeException(
                 sprintf('Unsupported channel %s while testing', $this->name())
             ),
@@ -210,6 +213,50 @@ class Channel implements ChannelInterface
             'recipient_type' => $recipient->getType(),
             'data' => $message->getData(),
             //'read_at' => null,
+            'created_at' => null,
+        ];
+    }
+    
+    protected function browserMessage(NotificationInterface $notification, RecipientInterface $recipient): object
+    {
+        if (! $recipient instanceof GuestRecipient && empty($recipient->getId())) {
+            throw new UndefinedAddressException($this->name(), $notification, $recipient);
+        }
+        
+        if (! $notification instanceof Message\ToBrowser) {
+            throw new UndefinedMessageException($this->name(), $notification, $recipient);
+        }
+        
+        $message = new Autowire($this->container)->call(
+            $notification->toBrowserHandler(),
+            ['recipient' => $recipient, 'channel' => $this->name()]
+        );
+        
+        if (! $message instanceof Message\BrowserInterface) {
+            throw new UndefinedMessageException($this->name(), $notification, $recipient);
+        }
+        
+        $expiresAt = null;
+
+        if ($recipient instanceof GuestRecipient && $this->container->has(ClockInterface::class)) {
+            $after = $recipient->getExpiresAfter();
+            $now =$this->container->get(ClockInterface::class)->now();
+
+            if ($after instanceof \DateInterval) {
+                $expiresAt = $now->add($after);
+            } elseif (is_int($after)) {
+                $modified = $now->modify('+'.$after.' seconds');
+                $expiresAt = $modified === false ? null : $modified;
+            }
+        }
+        
+        return (object) [
+            'name' => $notification->getName(),
+            'recipient_id' => $recipient->getId(),
+            'recipient_type' => $recipient->getType(),
+            'data' => $message->getData(),
+            //'read_at' => null,
+            'expires_at' => $expiresAt,
             'created_at' => null,
         ];
     }
