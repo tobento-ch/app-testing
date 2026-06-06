@@ -74,7 +74,7 @@ class NotifierTest extends \Tobento\App\Testing\TestCase
                 $notification = new Notification(
                     subject: 'New Invoice',
                     content: 'You got a new invoice for 15 EUR.',
-                    channels: ['mail', 'sms', 'storage'],
+                    channels: ['mail', 'sms', 'storage', 'browser'],
                 );
 
                 // The receiver of the notification:
@@ -104,7 +104,7 @@ class NotifierTest extends \Tobento\App\Testing\TestCase
                 $this->assertSame('New Invoice', $mail->getSubject());
 
                 return $notification->getSubject() === 'New Invoice'
-                    && $messages->successful()->channelNames() === ['mail', 'sms', 'storage']
+                    && $messages->successful()->channelNames() === ['mail', 'sms', 'storage', 'browser']
                     && $messages->get('sms')->message()->getTo()->phone() === '15556666666'
                     && $recipient->getAddressForChannel('mail', $notification)?->email() === 'mail@example.com';
             })
