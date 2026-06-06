@@ -33,13 +33,13 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
         
         $app->on(RouterInterface::class, static function(RouterInterface $router): void {
             $router->get('foo', function (ResponserInterface $responser, StoragesInterface $storages) {
-                $storage = $storages->get('uploads');
+                $storage = $storages->get('uploads-public');
                 $storage->write(path: 'foo.txt', content: 'Foo');
                 return $responser->redirect(uri: 'bar');
             });
 
             $router->get('bar', function (ResponserInterface $responser, StoragesInterface $storages) {
-                $storage = $storages->get('uploads');
+                $storage = $storages->get('uploads-public');
                 $storage->write(path: 'bar.txt', content: 'Bar');
                 return 'bar';
             });
@@ -65,7 +65,7 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
             $router->post('upload', function (ServerRequestInterface $request, StoragesInterface $storages) {    
                 
                 $file = $request->getUploadedFiles()['profile'];
-                $storage = $storages->get('uploads');
+                $storage = $storages->get('uploads-public');
                 
                 $storage->write(
                     path: $file->getClientFilename(),
@@ -84,7 +84,7 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
         $this->runApp();
         
         // assertions:
-        $fileStorage->storage(name: 'uploads')
+        $fileStorage->storage(name: 'uploads-public')
             ->assertCreated('profile.jpg')
             ->assertNotCreated('foo.jpg')
             ->assertExists('profile.jpg')
@@ -106,10 +106,10 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
         $http->request(method: 'GET', uri: 'foo');
         
         $http->response()->assertStatus(302);
-        $fileStorage->storage(name: 'uploads')->assertCreated('foo.txt');
+        $fileStorage->storage(name: 'uploads-public')->assertCreated('foo.txt');
         
         $http->followRedirects()->assertStatus(200)->assertBodySame('bar');
-        $this->fakeFileStorage()->storage(name: 'uploads')->assertCreated('bar.txt');
+        $this->fakeFileStorage()->storage(name: 'uploads-public')->assertCreated('bar.txt');
     }
     
     public function testMultipleRequestsKeepsFiles()
@@ -119,15 +119,15 @@ class FileStorageTest extends \Tobento\App\Testing\TestCase
         $http->request(method: 'GET', uri: 'foo');
         
         $this->bootingApp();
-        $fileStorage->storage(name: 'uploads')->write(path: 'bar.txt', content: 'content');
+        $fileStorage->storage(name: 'uploads-public')->write(path: 'bar.txt', content: 'content');
         
         $http->response()->assertStatus(302);
-        $fileStorage->storage(name: 'uploads')->assertCreated('foo.txt');
-        $this->assertSame(2, count($fileStorage->storage(name: 'uploads')->files(path: '')->all()));
+        $fileStorage->storage(name: 'uploads-public')->assertCreated('foo.txt');
+        $this->assertSame(2, count($fileStorage->storage(name: 'uploads-public')->files(path: '')->all()));
         
         $http->request(method: 'GET', uri: 'foo');
         $http->response()->assertStatus(302);
         
-        $this->assertSame(2, count($fileStorage->storage(name: 'uploads')->files(path: '')->all()));
+        $this->assertSame(2, count($fileStorage->storage(name: 'uploads-public')->files(path: '')->all()));
     }
 }
