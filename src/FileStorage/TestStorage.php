@@ -16,6 +16,7 @@ namespace Tobento\App\Testing\FileStorage;
 use Tobento\Service\FileStorage\Flysystem\Storage;
 use PHPUnit\Framework\TestCase;
 
+/** @psalm-suppress UnusedProperty */
 final class TestStorage extends Storage
 {
     private array $deleted = [];
