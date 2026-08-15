@@ -35,6 +35,8 @@ final class TestMailer implements MailerInterface
 {
     private array $messages = [];
     
+    private null|MailerException $throwOnSend = null;
+    
     /**
      * Create a new Mailer.
      *
@@ -79,6 +81,10 @@ final class TestMailer implements MailerInterface
      */
     private function sendMessage(MessageInterface $message): void
     {
+        if ($this->throwOnSend !== null) {
+            throw $this->throwOnSend;
+        }
+        
         $this->messages[] = $this->renderMessage($message);
     }
     
@@ -117,6 +123,13 @@ final class TestMailer implements MailerInterface
         return $message;
     }
     
+    public function throwOnSend(MailerException $exception): static
+    {
+        $this->throwOnSend = $exception;
+
+        return $this;
+    }
+    
     public function sent(string $message): TestMessage
     {
         $messages = array_filter($this->messages, static function (MessageInterface $m) use ($message): bool {
@@ -129,5 +142,29 @@ final class TestMailer implements MailerInterface
         );
         
         return new TestMessage($message, $messages);
+    }
+    
+    public function assertNotSent(string $message): static
+    {
+        $messages = array_filter($this->messages, static function (MessageInterface $m) use ($message): bool {
+            return $m instanceof $message;
+        });
+
+        TestCase::assertTrue(
+            count($messages) === 0,
+            sprintf('The unexpected [%s] message was sent.', $message)
+        );
+
+        return $this;
+    }
+
+    public function assertNothingSent(): static
+    {
+        TestCase::assertTrue(
+            count($this->messages) === 0,
+            sprintf('Expected no messages to be sent, but %d were sent.', count($this->messages))
+        );
+
+        return $this;
     }
 }
