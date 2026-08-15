@@ -1550,6 +1550,36 @@ class MailTest extends \Tobento\App\Testing\TestCase
 }
 ```
 
+### Additional Assertions
+
+**Assert that a message was not sent**
+
+```php
+$fakeMail->mailer('default')->assertNotSent(MyMessage::class);
+```
+
+Fails if any message of the given class was sent.
+
+**Assert that no messages were sent**
+
+```php
+$fakeMail->mailer('default')->assertNothingSent();
+```
+
+Useful for verifying that a route or action does not trigger mail sending.
+
+**Simulate a mailer failure**
+
+```php
+use Tobento\Service\Mail\MailerException;
+
+$fakeMail->mailer('default')->throwOnSend(
+    new MailerException('Simulated failure')
+);
+```
+
+This causes `send()` to throw the provided exception, allowing you to test error handling paths.
+
 ## Notifier Tests
 
 If you have installed the [App Notifier](https://github.com/tobento-ch/app-notifier) bundle you may test your application using the ```fakeNotifier``` method which allows you to create a fake notifier to prevent notification messages from being sent.
