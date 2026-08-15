@@ -28,6 +28,11 @@ trait MigrateDatabases
         $this->beforeMigrateDatabases();
         
         $app = $this->getApp();
+        
+        if (!$app->has(MigratorInterface::class)) {
+            return;
+        }
+        
         $migrator = $app->get(MigratorInterface::class);
         $migrationFactory = $app->get(MigrationFactoryInterface::class);
         $migrations = [];

@@ -28,6 +28,11 @@ trait RefreshDatabases
         $this->beforeRefreshDatabases();
         
         $app = $this->getApp();
+        
+        if (!$app->has(DatabasesInterface::class)) {
+            return;
+        }
+        
         $databases = $app->get(DatabasesInterface::class);
         $cleaner = new Cleaner();
         
