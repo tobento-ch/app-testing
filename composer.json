@@ -1,6 +1,6 @@
 {
     "name": "tobento/app-testing",
-    "version": "2.0.7",
+    "version": "2.0.8",
     "type": "library",
     "description": "App testing support.",
     "keywords": [
