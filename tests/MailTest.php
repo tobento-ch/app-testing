@@ -18,6 +18,7 @@ use Tobento\App\AppInterface;
 use Tobento\Service\Routing\RouterInterface;
 use Tobento\Service\Responser\ResponserInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tobento\Service\Mail\MailerException;
 use Tobento\Service\Mail\MailerInterface;
 use Tobento\Service\Mail\MessageInterface;
 use Tobento\Service\Mail\Message;
@@ -421,6 +422,127 @@ class MailTest extends \Tobento\App\Testing\TestCase
             ->assertTimes(2);
     }
     
+    public function testAssertNotSentThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('The unexpected [Tobento\Service\Mail\Message] message was sent.');
+
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'mail');
+
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('mail', function (ServerRequestInterface $request, MailerInterface $mailer) {
+                $message = new Message()->subject('Lorem');
+                $mailer->send($message);
+                return 'response';
+            });
+        });
+
+        $this->runApp();
+
+        $fakeMail->mailer(name: 'default')->assertNotSent(Message::class);
+    }
+    
+    public function testAssertNotSentSuccess()
+    {
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+
+        $http->request(method: 'POST', uri: 'mail');
+
+        // Route sends a different message type
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('mail', function (ServerRequestInterface $request, MailerInterface $mailer) {
+                $message = new Message(); // sent
+                $mailer->send($message);
+                return 'response';
+            });
+        });
+
+        $this->runApp();
+
+        // Should NOT throw because MyMessage was not sent
+        $fakeMail->mailer('default')->assertNotSent(\Tobento\Service\Mail\TemplateMessage::class);
+
+        $this->assertTrue(true); // reached without exception
+    }
+    
+    public function testAssertNothingSentThrowsException()
+    {
+        $this->expectException(ExpectationFailedException::class);
+        $this->expectExceptionMessage('Expected no messages to be sent, but 1 were sent.');
+
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+        $http->request(method: 'POST', uri: 'mail');
+
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('mail', function (ServerRequestInterface $request, MailerInterface $mailer) {
+                $message = new Message()->subject('Lorem');
+                $mailer->send($message);
+                return 'response';
+            });
+        });
+
+        $this->runApp();
+
+        $fakeMail->mailer(name: 'default')->assertNothingSent();
+    }
+
+    public function testAssertNothingSentSuccess()
+    {
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+
+        $http->request(method: 'POST', uri: 'mail');
+
+        // Route does NOT send any mail
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('mail', function () {
+                return 'response';
+            });
+        });
+
+        $this->runApp();
+
+        // Should NOT throw
+        $fakeMail->mailer('default')->assertNothingSent();
+
+        $this->assertTrue(true);
+    }
+    
+    public function testThrowOnSendThrowsException()
+    {
+        $fakeMail = $this->fakeMail();
+        $http = $this->fakeHttp();
+        
+        $http->request(method: 'POST', uri: 'mail');
+
+        $this->getApp()->on(RouterInterface::class, static function(RouterInterface $router): void {
+            $router->post('mail', function (ServerRequestInterface $request, MailerInterface $mailer) {
+                $message = new Message()->subject('Lorem');
+                $mailer->send($message);
+                return 'response';
+            });
+        });
+
+        $this->bootingApp();
+        
+        $fakeMail->mailer('default')->throwOnSend(
+            new MailerException('Simulated failure')
+        );
+        
+        try {
+            $this->runApp();
+            $this->fail('Expected BootException was not thrown.');
+        } catch (\Tobento\Service\Booting\BootException $e) {
+            $previous = $e->getPrevious();
+            $this->assertInstanceOf(MailerException::class, $previous);
+            $this->assertSame('Simulated failure', $previous->getMessage());
+        }
+    }
+
     public function testFollowingRedirects()
     {
         $fakeMail = $this->fakeMail();
