@@ -1,6 +1,6 @@
 {
     "name": "tobento/app-testing",
-    "version": "2.0.8",
+    "version": "2.0.9",
     "type": "library",
     "description": "App testing support.",
     "keywords": [
@@ -26,6 +26,7 @@
         "tobento/app": "^2.0",
         "tobento/app-console": "^2.0",
         "tobento/app-seeding": "^2.0",
+        "tobento/apps": "^2.0",
         "tobento/service-collection": "^2.0",
         "tobento/service-iterable": "^2.0",
         "tobento/service-macro": "^2.0",
