@@ -34,6 +34,7 @@ Testing support for the app.
         - [Replace Databases](#replace-databases)
     - [Logging Tests](#logging-tests)
     - [Addons](#addons)
+        - [Forward Request Addon](#forward-request-addon)
         - [Languages Addon](#languages-addon)
 - [Credits](#credits)
 ___
@@ -1839,6 +1840,70 @@ class LoggingTest extends \Tobento\App\Testing\TestCase
 ```
 
 ## Addons
+
+### Forward Request Addon
+
+You may use the ```ForwardRequestAddon``` trait when the app under test internally drives another [app](https://github.com/tobento-ch/apps) during a request, for example a backend app which boots a frontend app to render a live preview or an inline editor.
+
+Such a sub app has no real HTTP request of its own under the test harness, so it would resolve an empty request from the globals, which are empty on the CLI. The ```forwardRequestToApp``` method forwards the faked request to the sub app instead.
+
+```php
+use Tobento\App\AppInterface;
+use Tobento\Apps\AppsInterface;
+
+class PreviewTest extends \Tobento\App\Testing\TestCase
+{
+    use \Tobento\App\Testing\Addon\ForwardRequestAddon;
+    
+    public function createApp(): AppInterface
+    {
+        $app = $this->createTmpApp(rootDir: __DIR__.'/..');
+        $app->boot(Backend::class);
+        $app->boot(Frontend::class);
+        $app->booting();
+        
+        // The app under test is the backend sub app:
+        $app = $app->get(AppsInterface::class)->get('backend')->app();
+        
+        // Forward the faked request to the frontend sub app:
+        $this->forwardRequestToApp(app: $app, appId: 'frontend', prefix: 'app/frontend/');
+        
+        return $app;
+    }
+
+    public function testFrontendIsDisplayed()
+    {
+        // The request path is relative to the routes of the app under test.
+        // The frontend app receives it without the prefix: 'about'.
+        $http = $this->fakeHttp();
+        $http->request(method: 'GET', uri: 'app/frontend/about');
+        
+        $http->response()->assertStatus(200)->assertBodyContains('About');
+    }
+}
+```
+
+**Parameters**
+
+| Parameter | Description |
+| --- | --- |
+| ```$app``` | The app under test. |
+| ```$appId``` | The id of the sub app to forward the request to, e.g. ```frontend```. |
+| ```$prefix``` | The route prefix to strip from the request path, e.g. ```app/frontend/```. Use the route pattern which delegates to the sub app, not the sub app's full computed slug, as the faked request path is relative to the route. |
+
+The method returns the sub app instance, so you may customize it further, for example using ```$subApp->on(...)```.
+
+**What it does**
+
+* Registers a server request for the sub app taken from the faked request of the app under test, with the prefix stripped from the path. The method, query and headers are kept.
+* Replaces the session middleware and removes the CSRF middleware of the sub app. The sub app has its own middleware factory, so the fakes of the ```fakeHttp``` method do not apply there. Otherwise the CSRF middleware would reject the faked request and the session middleware may fail on the faked session.
+
+**Good to know**
+
+* Call the method before the sub app is booted, for example inside ```createApp```.
+* The faked request is read when the sub app resolves its request, so ```fakeHttp``` may be called after ```forwardRequestToApp```.
+* A ```RuntimeException``` is thrown if the sub app is not registered.
+* Do not use it for testing a sub app directly. Return the sub app from the ```createApp``` method instead, see the [Apps Testing](https://github.com/tobento-ch/apps#testing) section.
 
 ### Languages Addon
 
